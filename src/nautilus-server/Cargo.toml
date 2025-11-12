@@ -34,6 +34,7 @@ sui-crypto = { git = "https://github.com/mystenlabs/sui-rust-sdk", features = ["
 seal-sdk = { git = "https://github.com/MystenLabs/seal", rev = "608d30caba1d1fbf5f1d82e5a8e6280010fd3609", package = "seal-sdk", optional = true }
 
 [features]
+delphi = []
 weather-example = []
 twitter-example = ["regex"]
 seal-example = ["sui-crypto", "sui-sdk-types", "seal-sdk"]

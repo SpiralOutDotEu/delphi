@@ -10,6 +10,11 @@ use serde_json::json;
 use std::fmt;
 
 mod apps {
+
+    #[cfg(feature = "delphi")]
+    #[path = "delphi/mod.rs"]
+    pub mod delphi;
+
     #[cfg(feature = "twitter-example")]
     #[path = "twitter-example/mod.rs"]
     pub mod twitter_example;
@@ -24,6 +29,9 @@ mod apps {
 }
 
 pub mod app {
+    #[cfg(feature = "delphi")]
+    pub use crate::apps::delphi::*;
+
     #[cfg(feature = "twitter-example")]
     pub use crate::apps::twitter_example::*;
 
