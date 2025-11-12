@@ -321,9 +321,7 @@ mod test {
 
     #[test]
     fn test_serde() {
-        // Note: This test needs to be updated to match the new CryptoPriceResponse structure
-        // and the corresponding test in `move/enclave/sources/enclave.move` should also be updated
-        // to maintain serialization consistency.
+        // test result should be consistent with test_serde in `move/enclave/sources/enclave.move`.
         use fastcrypto::encoding::{Encoding, Hex};
         let payload = CryptoPriceResponse {
             r#type: 2,
@@ -336,8 +334,11 @@ mod test {
         let timestamp = 1744038900000;
         let intent_msg = IntentMessage::new(payload, timestamp, IntentScope::ProcessData);
         let signing_payload = bcs::to_bytes(&intent_msg).expect("should not fail");
-        // The expected hex value will be different for the new structure
-        // This test should be updated once the Move code is updated to match
-        assert!(!signing_payload.is_empty());
+        assert!(
+            signing_payload
+                == Hex::decode("0020b1d1109601000002000000000000000a30312d30312d3230323407626974636f696e010000000000000000a014e3322600000100000000000000")
+                    .unwrap()
+        );
     }
+
 }
