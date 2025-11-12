@@ -191,6 +191,16 @@ public struct SigningPayload has copy, drop {
     temperature: u64,
 }
 
+#[test_only]
+public struct CryptoPricePayload has copy, drop {
+    type_: u64,
+    date: String,
+    coin: String,
+    comparator: u64,
+    price: u64,
+    result: u64,
+}
+
 #[test]
 fun test_serde() {
     // serialization should be consistent with rust test see `fn test_serde` in `src/nautilus-server/app.rs`.
@@ -206,4 +216,25 @@ fun test_serde() {
     );
     let bytes = bcs::to_bytes(&signing_payload);
     assert!(bytes == x"0020b1d110960100000d53616e204672616e636973636f0d00000000000000", 0);
+}
+
+#[test]
+fun test_serde_delphi() {
+    // serialization should be consistent with rust test see `fn test_serde` in `src/nautilus-server/src/apps/delphi/mod.rs`.
+    let scope = 0;
+    let timestamp = 1744038900000;
+    let signing_payload = create_intent_message(
+        scope,
+        timestamp,
+        CryptoPricePayload {
+            type_: 2,
+            date: b"01-01-2024".to_string(),
+            coin: b"bitcoin".to_string(),
+            comparator: 1,
+            price: 42000_000_000_000,
+            result: 1,
+        },
+    );
+    let bytes = bcs::to_bytes(&signing_payload);
+    assert!(bytes == x"0020b1d1109601000002000000000000000a30312d30312d3230323407626974636f696e010000000000000000a014e3322600000100000000000000", 0);
 }
