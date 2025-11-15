@@ -1,8 +1,6 @@
-/*
 #[test_only]
 module delphi::delphi_tests;
-// uncomment this line to import the module
-// use delphi::delphi;
+use delphi::delphi;
 
 const ENotImplemented: u64 = 0;
 
@@ -15,4 +13,3 @@ fun test_delphi() {
 fun test_delphi_fail() {
     abort ENotImplemented
 }
-*/
