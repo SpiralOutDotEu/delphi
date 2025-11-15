@@ -1,0 +1,371 @@
+/* Prediction market themed global styles - Polymarket inspired */
+:root {
+  --market-primary: #3b82f6;
+  --market-primary-dark: #2563eb;
+  --market-primary-light: #60a5fa;
+  --market-accent: #93c5fd;
+  --market-success: #10b981;
+  --market-danger: #ef4444;
+  --market-bg-dark: #0f172a;
+  --market-bg-darker: #020617;
+  --market-bg-card: rgba(15, 23, 42, 0.8);
+  --market-border: rgba(59, 130, 246, 0.2);
+  --market-glow: rgba(59, 130, 246, 0.3);
+  --market-glow-strong: rgba(59, 130, 246, 0.5);
+
+  /* Legacy support */
+  --crypto-primary: var(--market-primary);
+  --crypto-secondary: var(--market-primary-light);
+  --crypto-accent: var(--market-accent);
+  --crypto-bg-dark: var(--market-bg-dark);
+  --crypto-bg-darker: var(--market-bg-darker);
+  --crypto-bg-card: var(--market-bg-card);
+  --crypto-border: var(--market-border);
+  --crypto-glow: var(--market-glow);
+  --crypto-glow-strong: var(--market-glow-strong);
+}
+
+body {
+  background: var(--crypto-bg-darker);
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* Hero section styles */
+.hero-section {
+  background: linear-gradient(
+    135deg,
+    var(--crypto-bg-dark) 0%,
+    var(--crypto-bg-darker) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 20% 30%, var(--market-glow) 0%, transparent 40%),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(59, 130, 246, 0.15) 0%,
+      transparent 40%
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-section > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Glow effects for market elements */
+.crypto-glow {
+  box-shadow: 0 0 20px var(--market-glow);
+}
+
+.crypto-glow-hover:hover {
+  box-shadow: 0 0 40px var(--market-glow-strong);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Card styles */
+.crypto-card {
+  background: var(--crypto-bg-card);
+  border: 1px solid var(--crypto-border);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.crypto-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--crypto-primary),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.crypto-card:hover {
+  border-color: var(--market-primary);
+  box-shadow: 0 12px 40px rgba(59, 130, 246, 0.3);
+  transform: translateY(-4px);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.crypto-card:hover::before {
+  opacity: 1;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--market-primary),
+    transparent
+  );
+}
+
+/* Feature card icon container */
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    var(--market-primary) 0%,
+    var(--market-primary-light) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px var(--market-glow);
+  transition: all 0.3s ease;
+}
+
+.crypto-card:hover .feature-icon {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 6px 24px var(--market-glow-strong);
+}
+
+/* Button styles */
+.crypto-button {
+  background: var(--market-primary);
+  border: none;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.crypto-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.crypto-button:hover {
+  background: var(--market-primary-dark);
+  box-shadow: 0 6px 24px var(--market-glow-strong);
+  transform: translateY(-2px);
+}
+
+.crypto-button:hover::before {
+  left: 100%;
+}
+
+.crypto-button-outline {
+  border: 2px solid var(--market-border);
+  background: transparent;
+  color: var(--gray-11);
+  transition: all 0.3s ease;
+}
+
+.crypto-button-outline:hover {
+  border-color: var(--market-primary);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--market-accent);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Binary market buttons */
+.market-button-yes {
+  background: var(--market-success);
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.market-button-yes:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.market-button-no {
+  background: var(--market-danger);
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.market-button-no:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Text gradient */
+.text-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--market-primary) 0%,
+    var(--market-accent) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section heading */
+.section-heading {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--gray-11);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Logo animation */
+@keyframes logo-glow {
+  0%,
+  100% {
+    box-shadow: 0 8px 32px var(--market-glow);
+  }
+  50% {
+    box-shadow: 0 8px 40px var(--market-glow-strong);
+  }
+}
+
+.logo-container {
+  animation: logo-glow 3s ease-in-out infinite;
+}
+
+/* Navigation link hover */
+.nav-link:hover {
+  color: var(--market-accent) !important;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Responsive feature cards grid */
+.feature-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(12px, 3vw, 24px);
+}
+
+@media (min-width: 640px) {
+  .feature-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .feature-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Responsive buttons */
+.responsive-button {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .responsive-button {
+    width: auto;
+  }
+}
+
+/* Markets grid */
+.markets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: clamp(16px, 3vw, 24px);
+}
+
+@media (min-width: 640px) {
+  .markets-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .markets-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Market cards */
+.market-card {
+  background: var(--market-bg-card);
+  border: 1px solid var(--market-border);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.market-card-available {
+  border-color: var(--market-primary);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+}
+
+.market-card-available:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+  border-color: var(--market-primary-light);
+}
+
+.market-card-coming-soon {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.market-card-coming-soon:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
+
+.market-icon-available {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 4px 16px var(--market-glow);
+  }
+  50% {
+    box-shadow: 0 4px 20px var(--market-glow-strong);
+  }
+}

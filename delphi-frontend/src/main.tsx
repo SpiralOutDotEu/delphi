@@ -2,10 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "@mysten/dapp-kit/dist/index.css";
 import "@radix-ui/themes/styles.css";
+import "./theme/styles.css";
 
 import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Theme } from "@radix-ui/themes";
+import { ThemeProvider } from "./theme/theme";
 import App from "./App.tsx";
 import { networkConfig } from "./networkConfig.ts";
 
@@ -13,7 +14,7 @@ const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <Theme appearance="dark">
+    <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
           <WalletProvider autoConnect>
@@ -21,6 +22,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           </WalletProvider>
         </SuiClientProvider>
       </QueryClientProvider>
-    </Theme>
+    </ThemeProvider>
   </React.StrictMode>,
 );
