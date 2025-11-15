@@ -369,3 +369,49 @@ html {
     box-shadow: 0 4px 20px var(--market-glow-strong);
   }
 }
+
+/* Form input styles */
+.form-input {
+  transition: all 0.2s ease;
+}
+
+.form-input:hover {
+  border-color: var(--market-primary) !important;
+  background: var(--gray-4) !important;
+}
+
+.form-input:focus,
+.form-input:focus-within {
+  border-color: var(--market-primary) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  background: var(--gray-4) !important;
+  outline: none;
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pulse animation for success indicator */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* Spin animation for loading indicators */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

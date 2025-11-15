@@ -90,6 +90,22 @@ export function Header() {
         </Link>
         <Link asChild>
           <RouterLink
+            to="/create-market"
+            style={{
+              textDecoration: "none",
+              color: "var(--gray-11)",
+              fontWeight: 500,
+              transition: "color 0.2s ease",
+              fontSize: "clamp(14px, 2vw, 16px)",
+            }}
+            className="nav-link"
+          >
+            <Box display={{ initial: "none", sm: "block" }}>Create Market</Box>
+            <Box display={{ initial: "block", sm: "none" }}>Create</Box>
+          </RouterLink>
+        </Link>
+        <Link asChild>
+          <RouterLink
             to="/admin"
             style={{
               textDecoration: "none",
