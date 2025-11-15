@@ -88,6 +88,21 @@ export function Header() {
             <Box display={{ initial: "block", sm: "none" }}>Objects</Box>
           </RouterLink>
         </Link>
+        <Link asChild>
+          <RouterLink
+            to="/admin"
+            style={{
+              textDecoration: "none",
+              color: "var(--gray-11)",
+              fontWeight: 500,
+              transition: "color 0.2s ease",
+              fontSize: "clamp(14px, 2vw, 16px)",
+            }}
+            className="nav-link"
+          >
+            Admin
+          </RouterLink>
+        </Link>
         <Box>
           <ConnectButton />
         </Box>
