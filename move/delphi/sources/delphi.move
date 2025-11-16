@@ -108,6 +108,10 @@ public struct MarketCreated has copy, drop {
     market_id: ID,
     initial_virtual_per_side: u64,
     b_liquidity: u64,
+    date: String,
+    coin: String,
+    comparator: u64,
+    price: u64,
 }
 
 public struct MarketResolved has copy, drop {
@@ -258,6 +262,10 @@ public fun create_market<T>(
         market_id,
         initial_virtual_per_side: config.initial_virtual_per_side,
         b_liquidity: config.b_liquidity,
+        date,
+        coin,
+        comparator,
+        price,
     });
 }
 
