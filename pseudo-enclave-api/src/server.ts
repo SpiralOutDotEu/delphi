@@ -380,13 +380,17 @@ app.post('/process_data', async (req, res) => {
 
       // Type 1: "question" – we *actually* query two-days-ago just to simulate,
 
-      // but we always return price=0, result=0 on output.
+      // but we return the input price, result=0 on output.
 
       const twoDaysBefore = getTwoDaysBeforeToday();
 
       await fetchCryptoPrice(coin, twoDaysBefore, apiKey); // discard, side-effect only
 
-      responsePriceU64 = '0';
+      // Convert input price to u64 string (handle both string and number inputs)
+      const inputPriceU64 = BigInt(
+        typeof price === 'string' ? price : String(price),
+      );
+      responsePriceU64 = inputPriceU64.toString();
 
       queryDate = date;
 
