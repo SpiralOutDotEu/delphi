@@ -282,7 +282,8 @@ export function AdminPage() {
 
   if (!account) {
     return (
-      <Container size="4" py="6">
+      <Box className="page-container">
+        <Container size="4" py="6">
         <Card className="crypto-card">
           <Box p="6">
             <Text size="4" color="gray">
@@ -290,13 +291,15 @@ export function AdminPage() {
             </Text>
           </Box>
         </Card>
-      </Container>
+        </Container>
+      </Box>
     );
   }
 
   if (!enclavePackageId || enclavePackageId === "0x0") {
     return (
-      <Container size="4" py="6">
+      <Box className="page-container">
+        <Container size="4" py="6">
         <Card className="crypto-card">
           <Box p="6">
             <Text size="4" color="red">
@@ -304,12 +307,14 @@ export function AdminPage() {
             </Text>
           </Box>
         </Card>
-      </Container>
+        </Container>
+      </Box>
     );
   }
 
   return (
-    <Container size="4" py="6">
+    <Box className="page-container">
+      <Container size="4" py="6">
       <Heading size="8" mb="6" className="text-gradient">
         Enclave Admin
       </Heading>
@@ -616,6 +621,7 @@ export function AdminPage() {
           </Box>
         </Card>
       </Flex>
-    </Container>
+      </Container>
+    </Box>
   );
 }

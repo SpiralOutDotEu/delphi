@@ -267,19 +267,22 @@ export function CreateMarketPage() {
 
   if (!account) {
     return (
-      <Container size="4" py="6">
-        <Card className="crypto-card">
-          <Box p="6">
-            <Text size="4" color="gray">
-              Please connect your wallet to create a market.
-            </Text>
-          </Box>
-        </Card>
-      </Container>
+      <Box className="page-container">
+        <Container size="4" py="6">
+          <Card className="crypto-card">
+            <Box p="6">
+              <Text size="4" color="gray">
+                Please connect your wallet to create a market.
+              </Text>
+            </Box>
+          </Card>
+        </Container>
+      </Box>
     );
   }
 
   return (
+    <Box className="page-container">
     <Container size="3" py="8" style={{ maxWidth: "1200px", margin: "0 auto" }}>
       <Box mb="8" style={{ textAlign: "center" }}>
         <Heading
@@ -292,8 +295,12 @@ export function CreateMarketPage() {
         </Heading>
         <Text
           size="4"
-          color="gray"
-          style={{ lineHeight: "1.7", maxWidth: "700px", margin: "0 auto" }}
+          style={{ 
+            lineHeight: "1.7", 
+            maxWidth: "700px", 
+            margin: "0 auto",
+            color: "var(--oracle-text-secondary)"
+          }}
         >
           Create a prediction market by specifying a crypto price question. Once
           validated, you can deploy the market on-chain where others can trade
@@ -304,21 +311,18 @@ export function CreateMarketPage() {
       <Card
         className="crypto-card"
         style={{
-          background: "var(--gray-2)",
-          border: "1px solid var(--gray-6)",
+          background: "var(--oracle-bg-card)",
+          border: "1px solid var(--oracle-border)",
           boxShadow:
-            "0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.1)",
+            "0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--oracle-border)",
           overflow: "hidden",
           maxWidth: "900px",
           margin: "0 auto",
+          backdropFilter: "blur(12px)",
         }}
       >
         <Box
           p="10"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%)",
-          }}
         >
           <Box mb="8">
             <Flex align="center" gap="2" mb="6">
@@ -327,18 +331,18 @@ export function CreateMarketPage() {
                   width: "4px",
                   height: "24px",
                   background:
-                    "linear-gradient(180deg, var(--market-primary) 0%, var(--market-primary-light) 100%)",
+                    "linear-gradient(180deg, var(--oracle-primary) 0%, var(--oracle-glow) 100%)",
                   borderRadius: "2px",
                 }}
               />
               <Text
                 size="4"
                 weight="medium"
-                color="gray"
                 style={{
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                   fontSize: "12px",
+                  color: "var(--oracle-text-secondary)",
                 }}
               >
                 Market Question
@@ -348,9 +352,9 @@ export function CreateMarketPage() {
             <Box
               p="6"
               style={{
-                background: "var(--gray-3)",
+                background: "var(--oracle-secondary)",
                 borderRadius: "12px",
-                border: "1px solid var(--gray-6)",
+                border: "1px solid var(--oracle-border)",
                 position: "relative",
               }}
             >
@@ -370,7 +374,7 @@ export function CreateMarketPage() {
                   weight="medium"
                   style={{
                     whiteSpace: "nowrap",
-                    color: "var(--gray-12)",
+                    color: "var(--oracle-text-primary)",
                   }}
                 >
                   Will
@@ -380,21 +384,8 @@ export function CreateMarketPage() {
                   <Select.Root value={coin} onValueChange={setCoin}>
                     <Select.Trigger
                       placeholder="Select coin"
-                      style={{
-                        minWidth: "200px",
-                        fontSize: "19px",
-                        padding: "16px 20px",
-                        height: "52px",
-                        background: coin ? "var(--gray-4)" : "var(--gray-3)",
-                        border: coin
-                          ? "2px solid var(--market-primary)"
-                          : "2px solid var(--gray-6)",
-                        borderRadius: "10px",
-                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                        fontWeight: coin ? 500 : 400,
-                        color: coin ? "var(--gray-12)" : "var(--gray-9)",
-                      }}
-                      className="form-input"
+                      style={{ minWidth: "200px" }}
+                      className={`form-input ${coin ? "form-input-filled" : ""}`}
                     />
                     <Select.Content>
                       {COINS.map((coinOption) => (
@@ -417,7 +408,7 @@ export function CreateMarketPage() {
                         pointerEvents: "none",
                       }}
                     >
-                      <Text size="2" color="green" weight="bold">
+                      <Text size="2" style={{ color: "var(--oracle-bullish)" }} weight="bold">
                         ✓
                       </Text>
                     </Box>
@@ -444,23 +435,8 @@ export function CreateMarketPage() {
                   >
                     <Select.Trigger
                       placeholder="Select condition"
-                      style={{
-                        minWidth: "220px",
-                        fontSize: "19px",
-                        padding: "16px 20px",
-                        height: "52px",
-                        background: comparator
-                          ? "var(--gray-4)"
-                          : "var(--gray-3)",
-                        border: comparator
-                          ? "2px solid var(--market-primary)"
-                          : "2px solid var(--gray-6)",
-                        borderRadius: "10px",
-                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                        fontWeight: comparator ? 500 : 400,
-                        color: comparator ? "var(--gray-12)" : "var(--gray-9)",
-                      }}
-                      className="form-input"
+                      style={{ minWidth: "220px" }}
+                      className={`form-input ${comparator !== "" ? "form-input-filled" : ""}`}
                     />
                     <Select.Content>
                       {COMPARATORS.map((comp) => (
@@ -483,7 +459,7 @@ export function CreateMarketPage() {
                         pointerEvents: "none",
                       }}
                     >
-                      <Text size="2" color="green" weight="bold">
+                      <Text size="2" style={{ color: "var(--oracle-bullish)" }} weight="bold">
                         ✓
                       </Text>
                     </Box>
@@ -495,7 +471,7 @@ export function CreateMarketPage() {
                   weight="medium"
                   style={{
                     whiteSpace: "nowrap",
-                    color: "var(--gray-12)",
+                    color: "var(--oracle-text-primary)",
                   }}
                 >
                   than
@@ -514,21 +490,8 @@ export function CreateMarketPage() {
                       }
                     }}
                     disabled={isLoading || isValidating}
-                    style={{
-                      width: "220px",
-                      fontSize: "19px",
-                      padding: "16px 20px",
-                      height: "52px",
-                      background: price ? "var(--gray-4)" : "var(--gray-3)",
-                      border: price
-                        ? "2px solid var(--market-primary)"
-                        : "2px solid var(--gray-6)",
-                      borderRadius: "10px",
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      fontWeight: price ? 500 : 400,
-                      color: price ? "var(--gray-12)" : "var(--gray-9)",
-                    }}
-                    className="form-input"
+                    style={{ width: "220px" }}
+                    className={`form-input ${price ? "form-input-filled" : ""}`}
                   />
                   {price && (
                     <Box
@@ -540,7 +503,7 @@ export function CreateMarketPage() {
                         pointerEvents: "none",
                       }}
                     >
-                      <Text size="2" color="green" weight="bold">
+                      <Text size="2" style={{ color: "var(--oracle-bullish)" }} weight="bold">
                         ✓
                       </Text>
                     </Box>
@@ -572,21 +535,8 @@ export function CreateMarketPage() {
                       }
                     }}
                     disabled={isLoading || isValidating}
-                    style={{
-                      width: "240px",
-                      fontSize: "19px",
-                      padding: "16px 50px 16px 20px",
-                      height: "52px",
-                      background: date ? "var(--gray-4)" : "var(--gray-3)",
-                      border: date
-                        ? "2px solid var(--market-primary)"
-                        : "2px solid var(--gray-6)",
-                      borderRadius: "10px",
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      fontWeight: date ? 500 : 400,
-                      color: date ? "var(--gray-12)" : "var(--gray-9)",
-                    }}
-                    className="form-input"
+                    style={{ width: "240px", paddingRight: "50px" }}
+                    className={`form-input ${date ? "form-input-filled" : ""}`}
                   />
                   <input
                     ref={dateInputRef}
@@ -625,7 +575,7 @@ export function CreateMarketPage() {
                       }
                     }}
                   >
-                    <Text size="3" color="gray" style={{ userSelect: "none" }}>
+                    <Text size="3" style={{ color: "var(--oracle-text-muted)", userSelect: "none" }}>
                       📅
                     </Text>
                   </Box>
@@ -639,7 +589,7 @@ export function CreateMarketPage() {
                         pointerEvents: "none",
                       }}
                     >
-                      <Text size="2" color="green" weight="bold">
+                      <Text size="2" style={{ color: "var(--oracle-bullish)" }} weight="bold">
                         ✓
                       </Text>
                     </Box>
@@ -651,7 +601,7 @@ export function CreateMarketPage() {
                   weight="medium"
                   style={{
                     whiteSpace: "nowrap",
-                    color: "var(--gray-12)",
+                    color: "var(--oracle-text-primary)",
                   }}
                 >
                   ?
@@ -667,48 +617,48 @@ export function CreateMarketPage() {
             wrap="wrap"
             style={{
               paddingTop: "32px",
-              borderTop: "2px solid var(--gray-6)",
+              borderTop: "2px solid var(--oracle-border)",
               marginTop: "8px",
             }}
           >
             <Box style={{ flex: 1, minWidth: "200px" }}>
               {apiResponse && (
-                <Flex
-                  align="center"
-                  gap="3"
-                  p="3"
-                  style={{
-                    background: "rgba(16, 185, 129, 0.1)",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(16, 185, 129, 0.3)",
-                  }}
-                >
                   <Flex
                     align="center"
-                    justify="center"
+                    gap="3"
+                    p="3"
                     style={{
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50%",
-                      background: "var(--green-9)",
-                      flexShrink: 0,
+                      background: "rgba(79, 188, 128, 0.1)",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(79, 188, 128, 0.3)",
                     }}
                   >
-                    <Text size="3" style={{ color: "white" }} weight="bold">
-                      ✓
-                    </Text>
-                  </Flex>
-                  <Box
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                    }}
-                  >
-                    <Text size="3" color="green" weight="medium">
+                    <Flex
+                      align="center"
+                      justify="center"
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                        background: "var(--oracle-bullish)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Text size="3" style={{ color: "white" }} weight="bold">
+                        ✓
+                      </Text>
+                    </Flex>
+                    <Box
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px",
+                      }}
+                    >
+                    <Text size="3" style={{ color: "var(--oracle-bullish)" }} weight="medium">
                       Market validated successfully
                     </Text>
-                    <Text size="1" color="gray">
+                    <Text size="1" style={{ color: "var(--oracle-text-muted)" }}>
                       Ready to deploy on-chain
                     </Text>
                   </Box>
@@ -859,5 +809,6 @@ export function CreateMarketPage() {
         </Dialog.Content>
       </Dialog.Root>
     </Container>
+    </Box>
   );
 }

@@ -22,7 +22,8 @@ export function OwnedObjectsPage() {
   );
 
   return (
-    <Container size="4" py="6">
+    <Box className="page-container">
+      <Container size="4" py="6">
       <Heading size="8" mb="6" className="text-gradient">
         My Objects
       </Heading>
@@ -113,7 +114,8 @@ export function OwnedObjectsPage() {
           ))}
         </Box>
       )}
-    </Container>
+      </Container>
+    </Box>
   );
 }
 

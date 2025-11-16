@@ -1,6 +1,7 @@
 import { ConnectButton } from "@mysten/dapp-kit";
-import { Box, Flex, Heading, Link, Text } from "@radix-ui/themes";
+import { Box, Flex, Link } from "@radix-ui/themes";
 import { Link as RouterLink } from "react-router-dom";
+import { Logo } from "./Logo";
 
 export function Header() {
   return (
@@ -12,8 +13,8 @@ export function Header() {
       justify="between"
       align="center"
       style={{
-        borderBottom: "1px solid var(--market-border)",
-        background: "rgba(15, 23, 42, 0.9)",
+        borderBottom: "1px solid var(--oracle-border)",
+        background: "rgba(12, 18, 32, 0.95)",
         backdropFilter: "blur(10px)",
         zIndex: 1000,
       }}
@@ -22,36 +23,14 @@ export function Header() {
         <Link asChild>
           <RouterLink
             to="/"
-            style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "clamp(8px, 2vw, 12px)" }}
+            style={{
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "clamp(8px, 2vw, 12px)",
+            }}
           >
-            <Box
-              style={{
-                width: "clamp(32px, 8vw, 40px)",
-                height: "clamp(32px, 8vw, 40px)",
-                borderRadius: "clamp(8px, 2vw, 10px)",
-                background: "linear-gradient(135deg, var(--market-primary) 0%, var(--market-primary-light) 100%)",
-                border: "1px solid var(--market-border)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 2px 8px var(--market-glow)",
-              }}
-            >
-              <Text
-                weight="bold"
-                style={{
-                  fontSize: "clamp(16px, 4vw, 20px)",
-                  fontFamily: "serif",
-                  color: "white",
-                  lineHeight: 1,
-                }}
-              >
-                Δφ
-              </Text>
-            </Box>
-            <Heading size={{ initial: "5", sm: "6" }} className="text-gradient">
-              Delphi
-            </Heading>
+            <Logo size="small" showText={true} />
           </RouterLink>
         </Link>
       </Box>
@@ -62,7 +41,7 @@ export function Header() {
             to="/"
             style={{
               textDecoration: "none",
-              color: "var(--gray-11)",
+              color: "var(--oracle-text-secondary)",
               fontWeight: 500,
               transition: "color 0.2s ease",
               fontSize: "clamp(14px, 2vw, 16px)",
@@ -77,7 +56,7 @@ export function Header() {
             to="/objects"
             style={{
               textDecoration: "none",
-              color: "var(--gray-11)",
+              color: "var(--oracle-text-secondary)",
               fontWeight: 500,
               transition: "color 0.2s ease",
               fontSize: "clamp(14px, 2vw, 16px)",
@@ -93,7 +72,7 @@ export function Header() {
             to="/create-market"
             style={{
               textDecoration: "none",
-              color: "var(--gray-11)",
+              color: "var(--oracle-text-secondary)",
               fontWeight: 500,
               transition: "color 0.2s ease",
               fontSize: "clamp(14px, 2vw, 16px)",
@@ -109,7 +88,7 @@ export function Header() {
             to="/admin"
             style={{
               textDecoration: "none",
-              color: "var(--gray-11)",
+              color: "var(--oracle-text-secondary)",
               fontWeight: 500,
               transition: "color 0.2s ease",
               fontSize: "clamp(14px, 2vw, 16px)",

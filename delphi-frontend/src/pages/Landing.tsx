@@ -11,6 +11,7 @@ import {
   CheckIcon,
   ClockIcon,
 } from "@radix-ui/react-icons";
+import { Logo } from "../components/Logo";
 
 export function Landing() {
   return (
@@ -38,65 +39,28 @@ export function Landing() {
             paddingBottom: "clamp(16px, 2vh, 40px)",
           }}
         >
-          {/* Logo and Title */}
+          {/* Divine Logo and Brand Name */}
           <Flex
             align="center"
-            gap={{ initial: "3", sm: "4", md: "5" }}
+            gap={{ initial: "4", sm: "5", md: "6" }}
             justify="center"
-            mb="1"
-            direction={{ initial: "column", sm: "row" }}
+            mb="2"
+            direction="column"
           >
-            <Box
-              className="logo-container"
-              style={{
-                width: "clamp(60px, 12vw, 110px)",
-                height: "clamp(60px, 12vw, 110px)",
-                borderRadius: "clamp(16px, 2vw, 20px)",
-                background:
-                  "linear-gradient(135deg, var(--market-primary) 0%, var(--market-primary-light) 100%)",
-                border: "2px solid var(--market-border)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-              }}
-            >
-              <Text
-                weight="bold"
-                style={{
-                  fontSize: "clamp(1.5rem, 6vw, 3.5rem)",
-                  fontFamily: "serif",
-                  color: "white",
-                  lineHeight: 1,
-                }}
-              >
-                Δφ
-              </Text>
-            </Box>
-            <Heading
-              size={{ initial: "6", sm: "7", md: "8" }}
-              style={{
-                fontSize: "clamp(1.75rem, 5vw, 3.5rem)",
-                fontWeight: 900,
-                lineHeight: 1.1,
-                letterSpacing: "-0.02em",
-              }}
-              className="text-gradient"
-            >
-              Delphi
-            </Heading>
+            <Logo size="large" showText={true} />
           </Flex>
 
-          {/* Hero Description */}
+          {/* Hero Description - Oracle Prophecy */}
           <Text
             size={{ initial: "3", sm: "4", md: "5" }}
             style={{
               maxWidth: "clamp(300px, 90vw, 700px)",
-              color: "var(--gray-11)",
-              lineHeight: 1.6,
+              color: "var(--oracle-text-secondary)",
+              lineHeight: 1.7,
               fontWeight: 400,
               paddingLeft: "clamp(8px, 2vw, 0px)",
               paddingRight: "clamp(8px, 2vw, 0px)",
+              textAlign: "center",
             }}
           >
             Binary prediction markets on SUI network powered by Automated Market
@@ -157,6 +121,7 @@ export function Landing() {
               style={{
                 paddingLeft: "clamp(16px, 4vw, 0px)",
                 paddingRight: "clamp(16px, 4vw, 0px)",
+                color: "var(--oracle-text-secondary)",
               }}
             >
               Trade on crypto markets now. Stocks, sports, and more coming soon.
@@ -183,11 +148,11 @@ export function Landing() {
                       height: "clamp(48px, 10vw, 64px)",
                       borderRadius: "16px",
                       background:
-                        "linear-gradient(135deg, var(--market-primary) 0%, var(--market-primary-light) 100%)",
+                        "linear-gradient(135deg, var(--oracle-primary) 0%, var(--oracle-glow) 100%)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      boxShadow: "0 4px 16px var(--market-glow)",
+                      boxShadow: "0 4px 16px var(--oracle-primary-glow)",
                     }}
                   >
                     <CubeIcon
@@ -203,21 +168,22 @@ export function Landing() {
                     Crypto
                   </Heading>
                   <Flex align="center" gap="2">
-                    <Box
-                      style={{
-                        background: "var(--market-success)",
-                        borderRadius: "12px",
-                        padding: "4px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                      }}
-                    >
-                      <CheckIcon width="14" height="14" color="white" />
-                      <Text size="2" weight="bold" style={{ color: "white" }}>
-                        Available
-                      </Text>
-                    </Box>
+                  <Box
+                    style={{
+                      background: "var(--oracle-bullish)",
+                      borderRadius: "12px",
+                      padding: "4px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: "0 2px 8px rgba(79, 188, 128, 0.3)",
+                    }}
+                  >
+                    <CheckIcon width="14" height="14" color="white" />
+                    <Text size="2" weight="bold" style={{ color: "white" }}>
+                      Available
+                    </Text>
+                  </Box>
                   </Flex>
                 </Flex>
               </Box>
@@ -231,8 +197,8 @@ export function Landing() {
                       width: "clamp(48px, 10vw, 64px)",
                       height: "clamp(48px, 10vw, 64px)",
                       borderRadius: "16px",
-                      background: "rgba(59, 130, 246, 0.2)",
-                      border: "2px solid var(--market-border)",
+                      background: "rgba(58, 141, 255, 0.15)",
+                      border: "2px solid var(--oracle-border)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -241,40 +207,40 @@ export function Landing() {
                     <BarChartIcon
                       width="clamp(24px, 5vw, 32px)"
                       height="clamp(24px, 5vw, 32px)"
-                      color="var(--market-accent)"
+                      color="var(--oracle-glow)"
                     />
                   </Box>
                   <Heading
                     size={{ initial: "4", sm: "5" }}
-                    style={{ color: "var(--gray-11)" }}
+                    style={{ color: "var(--oracle-text-secondary)" }}
                   >
                     Stocks
                   </Heading>
                   <Flex align="center" gap="2">
-                    <Box
-                      style={{
-                        background: "rgba(59, 130, 246, 0.2)",
-                        borderRadius: "12px",
-                        padding: "4px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        border: "1px solid var(--market-border)",
-                      }}
+                  <Box
+                    style={{
+                      background: "rgba(58, 141, 255, 0.15)",
+                      borderRadius: "12px",
+                      padding: "4px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      border: "1px solid var(--oracle-border)",
+                    }}
+                  >
+                    <ClockIcon
+                      width="14"
+                      height="14"
+                      color="var(--oracle-glow)"
+                    />
+                    <Text
+                      size="2"
+                      weight="bold"
+                      style={{ color: "var(--oracle-glow)" }}
                     >
-                      <ClockIcon
-                        width="14"
-                        height="14"
-                        color="var(--market-accent)"
-                      />
-                      <Text
-                        size="2"
-                        weight="bold"
-                        style={{ color: "var(--market-accent)" }}
-                      >
-                        Coming Soon
-                      </Text>
-                    </Box>
+                      Coming Soon
+                    </Text>
+                  </Box>
                   </Flex>
                 </Flex>
               </Box>
@@ -288,8 +254,8 @@ export function Landing() {
                       width: "clamp(48px, 10vw, 64px)",
                       height: "clamp(48px, 10vw, 64px)",
                       borderRadius: "16px",
-                      background: "rgba(59, 130, 246, 0.2)",
-                      border: "2px solid var(--market-border)",
+                      background: "rgba(58, 141, 255, 0.15)",
+                      border: "2px solid var(--oracle-border)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -298,40 +264,40 @@ export function Landing() {
                     <RocketIcon
                       width="clamp(24px, 5vw, 32px)"
                       height="clamp(24px, 5vw, 32px)"
-                      color="var(--market-accent)"
+                      color="var(--oracle-glow)"
                     />
                   </Box>
                   <Heading
                     size={{ initial: "4", sm: "5" }}
-                    style={{ color: "var(--gray-11)" }}
+                    style={{ color: "var(--oracle-text-secondary)" }}
                   >
                     Sports
                   </Heading>
                   <Flex align="center" gap="2">
-                    <Box
-                      style={{
-                        background: "rgba(59, 130, 246, 0.2)",
-                        borderRadius: "12px",
-                        padding: "4px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        border: "1px solid var(--market-border)",
-                      }}
+                  <Box
+                    style={{
+                      background: "rgba(58, 141, 255, 0.15)",
+                      borderRadius: "12px",
+                      padding: "4px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      border: "1px solid var(--oracle-border)",
+                    }}
+                  >
+                    <ClockIcon
+                      width="14"
+                      height="14"
+                      color="var(--oracle-glow)"
+                    />
+                    <Text
+                      size="2"
+                      weight="bold"
+                      style={{ color: "var(--oracle-glow)" }}
                     >
-                      <ClockIcon
-                        width="14"
-                        height="14"
-                        color="var(--market-accent)"
-                      />
-                      <Text
-                        size="2"
-                        weight="bold"
-                        style={{ color: "var(--market-accent)" }}
-                      >
-                        Coming Soon
-                      </Text>
-                    </Box>
+                      Coming Soon
+                    </Text>
+                  </Box>
                   </Flex>
                 </Flex>
               </Box>
@@ -345,8 +311,8 @@ export function Landing() {
                       width: "clamp(48px, 10vw, 64px)",
                       height: "clamp(48px, 10vw, 64px)",
                       borderRadius: "16px",
-                      background: "rgba(59, 130, 246, 0.2)",
-                      border: "2px solid var(--market-border)",
+                      background: "rgba(58, 141, 255, 0.15)",
+                      border: "2px solid var(--oracle-border)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -355,40 +321,40 @@ export function Landing() {
                     <GlobeIcon
                       width="clamp(24px, 5vw, 32px)"
                       height="clamp(24px, 5vw, 32px)"
-                      color="var(--market-accent)"
+                      color="var(--oracle-glow)"
                     />
                   </Box>
                   <Heading
                     size={{ initial: "4", sm: "5" }}
-                    style={{ color: "var(--gray-11)" }}
+                    style={{ color: "var(--oracle-text-secondary)" }}
                   >
                     More
                   </Heading>
                   <Flex align="center" gap="2">
-                    <Box
-                      style={{
-                        background: "rgba(59, 130, 246, 0.2)",
-                        borderRadius: "12px",
-                        padding: "4px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        border: "1px solid var(--market-border)",
-                      }}
+                  <Box
+                    style={{
+                      background: "rgba(58, 141, 255, 0.15)",
+                      borderRadius: "12px",
+                      padding: "4px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      border: "1px solid var(--oracle-border)",
+                    }}
+                  >
+                    <ClockIcon
+                      width="14"
+                      height="14"
+                      color="var(--oracle-glow)"
+                    />
+                    <Text
+                      size="2"
+                      weight="bold"
+                      style={{ color: "var(--oracle-glow)" }}
                     >
-                      <ClockIcon
-                        width="14"
-                        height="14"
-                        color="var(--market-accent)"
-                      />
-                      <Text
-                        size="2"
-                        weight="bold"
-                        style={{ color: "var(--market-accent)" }}
-                      >
-                        Coming Soon
-                      </Text>
-                    </Box>
+                      Coming Soon
+                    </Text>
+                  </Box>
                   </Flex>
                 </Flex>
               </Box>
@@ -418,6 +384,7 @@ export function Landing() {
               style={{
                 paddingLeft: "clamp(16px, 4vw, 0px)",
                 paddingRight: "clamp(16px, 4vw, 0px)",
+                color: "var(--oracle-text-secondary)",
               }}
             >
               Trade binary markets on any event with transparent, decentralized
@@ -462,8 +429,7 @@ export function Landing() {
                 </Heading>
                 <Text
                   size={{ initial: "2", sm: "3" }}
-                  color="gray"
-                  style={{ lineHeight: 1.5 }}
+                  style={{ lineHeight: 1.5, color: "var(--oracle-text-secondary)" }}
                 >
                   Trusted Execution Environments provide provably authentic data
                   sources for market resolution, ensuring oracle reliability and
@@ -498,8 +464,7 @@ export function Landing() {
                 </Heading>
                 <Text
                   size={{ initial: "2", sm: "3" }}
-                  color="gray"
-                  style={{ lineHeight: 1.5 }}
+                  style={{ lineHeight: 1.5, color: "var(--oracle-text-secondary)" }}
                 >
                   Automated Market Making provides continuous liquidity for
                   binary markets, enabling instant trades at fair prices with
@@ -534,8 +499,7 @@ export function Landing() {
                 </Heading>
                 <Text
                   size={{ initial: "2", sm: "3" }}
-                  color="gray"
-                  style={{ lineHeight: 1.5 }}
+                  style={{ lineHeight: 1.5, color: "var(--oracle-text-secondary)" }}
                 >
                   Simple Yes/No markets on any event. Trade on politics, sports,
                   economics, and more with transparent, on-chain resolution.
