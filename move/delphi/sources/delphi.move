@@ -10,9 +10,9 @@ module delphi::delphi;
 use enclave::enclave::{Self, Enclave};
 use std::string::String;
 use sui::balance::{Self as balance, Balance};
-use sui::sui::SUI;
 use sui::coin::{Self as coin, Coin};
 use sui::event;
+use pseudo_usdc::pseudo_usdc::PSEUDO_USDC;
 
 
 
@@ -40,7 +40,7 @@ const SIDE_NO: u8 = 2;
 
 // Limits / scales
 const MAX_TOTAL_SHARES: u64 = 1_000_000_000;
-const PRICE_SCALE_MIST: u64 = 1_000_000_000; // 1 SUI in MIST
+const PRICE_SCALE_MIST: u64 = 1_000000; // 1 PSEUDO_USDC (with 6 decimals)
 
 // Probability scale for view function
 const PROBABILITY_SCALE: u64 = 10_000; // 1.0000
@@ -77,7 +77,7 @@ public struct Market has key, store {
     virtual_yes_shares: u64,
     virtual_no_shares: u64,
     b: u64,
-    collateral: Balance<SUI>,
+    collateral: Balance<PSEUDO_USDC>,
     resolved: bool,
     outcome: u8, // 0 none, 1 YES, 2 NO
     payout_per_share: u64,
@@ -248,7 +248,7 @@ public fun create_market<T>(
         virtual_no_shares: config.initial_virtual_per_side,
         yes_shares: 0,
         no_shares: 0,
-        collateral: balance::zero<SUI>(),
+        collateral: balance::zero<PSEUDO_USDC>(),
         b: config.b_liquidity,
         resolved: false,
         outcome: 0,
@@ -355,11 +355,11 @@ public fun buy_shares(
     config: &Config,
     market: &mut Market,
     mut position: Position,
-    mut payment: Coin<SUI>,
+    mut payment: Coin<PSEUDO_USDC>,
     amount: u64,
     side: u8,
     ctx: &mut TxContext,
-): (Coin<SUI>, Position) {
+): (Coin<PSEUDO_USDC>, Position) {
     assert!(side == SIDE_YES || side == SIDE_NO, E_INVALID_SIDE);
     assert!(!market.resolved, E_MARKET_RESOLVED);
     assert!(position.market == object::id(market), E_INVALID_POSITION_MARKET);
@@ -401,7 +401,7 @@ public fun sell_shares(
     amount: u64,
     side: u8,
     ctx: &mut TxContext,
-): Coin<SUI> {
+): Coin<PSEUDO_USDC> {
     assert!(side == SIDE_YES || side == SIDE_NO, E_INVALID_SIDE);
     assert!(!market.resolved, E_MARKET_RESOLVED);
     assert!(position.market == object::id(market), E_INVALID_POSITION_MARKET);
@@ -442,7 +442,7 @@ public fun close_position(
     market: &mut Market,
     position: Position,
     ctx: &mut TxContext,
-): Coin<SUI> {
+): Coin<PSEUDO_USDC> {
     assert!(position.market == object::id(market), E_INVALID_POSITION_MARKET);
     assert!(market.resolved, E_MARKET_NOT_RESOLVED);
 
@@ -464,7 +464,7 @@ public fun close_position(
     if (total_payout > 0) {
         coin::take(&mut market.collateral, total_payout, ctx)
     } else {
-        coin::from_balance(balance::zero<SUI>(), ctx)
+        coin::from_balance(balance::zero<PSEUDO_USDC>(), ctx)
     }
 }
 
@@ -633,7 +633,7 @@ fun softmax_pair(x_wad: u128, y_wad: u128): (u128, u128) {
     }
 }
 
-/// LMSR cost in MIST (integer, deterministic).
+/// LMSR cost in PSEUDO_USDC (integer, deterministic).
 /// C = b * ln( exp(Qy/b) + exp(Qn/b) )
 /// Using: ln(e^x + e^y) = a + ln(1 + e^{-(a - b)}), a = max(x,y)
 fun lmsr_cost_fp(q_yes: u64, q_no: u64, b: u64): u64 {
@@ -653,7 +653,7 @@ fun lmsr_cost_fp(q_yes: u64, q_no: u64, b: u64): u64 {
     let sum_wad: u128 = a_wad + ln1p;        // still WAD
     let c_fp: u128 = (b_u128 * sum_wad);     // units: shares * WAD
 
-    // Convert to MIST: * PRICE_SCALE_MIST / WAD
+    // Convert to PSEUDO_USDC: * PRICE_SCALE_MIST / WAD
     let num: u128 = c_fp * (PRICE_SCALE_MIST as u128);
     let c_mist: u128 = num / WAD;
 

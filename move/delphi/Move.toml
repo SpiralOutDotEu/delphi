@@ -6,6 +6,7 @@ edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 
 [dependencies]
 enclave = { local = "../pseudo-enclave" }
+pseudo_usdc = { local = "../pseudo_usdc" }
 # For remote import, use the `{ git = "...", subdir = "...", rev = "..." }`.
 # Revision can be a branch, a tag, and a commit hash.
 # MyRemotePackage = { git = "https://some.remote/host.git", subdir = "remote/path", rev = "main" }
@@ -20,7 +21,9 @@ enclave = { local = "../pseudo-enclave" }
 [addresses]
 delphi = "0x0"
 # enclave = "0x0"
+# pseudo_usdc = "0x0"
 enclave = "0x3ad05f3d193e0a8b16f4529d770ddbf1496fb82fb6151940e8ca99036ff2d0f0"
+pseudo_usdc = "0x647a2acf348ed70ba023654262fe5dfee0ecd2903c5f3d4fbc094f492e2a02b8"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.
