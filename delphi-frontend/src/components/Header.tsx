@@ -1,9 +1,13 @@
 import { ConnectButton } from "@mysten/dapp-kit";
 import { Box, Flex, Link } from "@radix-ui/themes";
 import { Link as RouterLink } from "react-router-dom";
+import { useState } from "react";
 import { Logo } from "./Logo";
+import { FaucetModal } from "./FaucetModal";
 
 export function Header() {
+  const [showFaucetModal, setShowFaucetModal] = useState(false);
+
   return (
     <Flex
       position="sticky"
@@ -113,10 +117,28 @@ export function Header() {
             Admin
           </RouterLink>
         </Link>
+        <Link
+          onClick={(e) => {
+            e.preventDefault();
+            setShowFaucetModal(true);
+          }}
+          style={{
+            textDecoration: "none",
+            color: "var(--oracle-text-secondary)",
+            fontWeight: 500,
+            transition: "color 0.2s ease",
+            fontSize: "clamp(14px, 2vw, 16px)",
+            cursor: "pointer",
+          }}
+          className="nav-link"
+        >
+          Faucet
+        </Link>
         <Box>
           <ConnectButton />
         </Box>
       </Flex>
+      <FaucetModal open={showFaucetModal} onOpenChange={setShowFaucetModal} />
     </Flex>
   );
 }
