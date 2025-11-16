@@ -69,6 +69,21 @@ export function Header() {
         </Link>
         <Link asChild>
           <RouterLink
+            to="/explore"
+            style={{
+              textDecoration: "none",
+              color: "var(--oracle-text-secondary)",
+              fontWeight: 500,
+              transition: "color 0.2s ease",
+              fontSize: "clamp(14px, 2vw, 16px)",
+            }}
+            className="nav-link"
+          >
+            Explore
+          </RouterLink>
+        </Link>
+        <Link asChild>
+          <RouterLink
             to="/create-market"
             style={{
               textDecoration: "none",

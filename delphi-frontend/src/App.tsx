@@ -4,6 +4,7 @@ import { Landing } from "./pages/Landing";
 import { OwnedObjectsPage } from "./pages/OwnedObjectsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { CreateMarketPage } from "./pages/CreateMarketPage";
+import { ExplorePage } from "./pages/ExplorePage";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <Header />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/explore" element={<ExplorePage />} />
         <Route path="/objects" element={<OwnedObjectsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/create-market" element={<CreateMarketPage />} />

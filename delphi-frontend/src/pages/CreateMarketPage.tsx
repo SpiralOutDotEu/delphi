@@ -24,6 +24,7 @@ import {
   API_ENDPOINT,
   MARKET_TYPE,
   MARKET_RESULT,
+  type Coin,
 } from "../constants";
 
 interface ApiResponse {
@@ -129,7 +130,7 @@ export function CreateMarketPage() {
           date: formattedDate,
           coin: coin,
           comparator: comparator as number,
-          price: parseInt(priceInteger),
+          price: priceInteger, // Send as string to preserve precision for large numbers
           result: MARKET_RESULT,
         },
       };
@@ -386,14 +387,75 @@ export function CreateMarketPage() {
                       placeholder="Select coin"
                       style={{ minWidth: "200px" }}
                       className={`form-input ${coin ? "form-input-filled" : ""}`}
-                    />
+                    >
+                      {coin && (() => {
+                        const selectedCoin = COINS.find((c) => c.value === coin);
+                        return selectedCoin ? (
+                          <Flex align="center" gap="2">
+                            {selectedCoin.image_svg_url && (
+                              <Box
+                                style={{
+                                  width: "20px",
+                                  height: "20px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <img
+                                  src={selectedCoin.image_svg_url}
+                                  alt={selectedCoin.name}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "contain",
+                                  }}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              </Box>
+                            )}
+                            <Text>{selectedCoin.name}</Text>
+                          </Flex>
+                        ) : null;
+                      })()}
+                    </Select.Trigger>
                     <Select.Content>
                       {COINS.map((coinOption) => (
                         <Select.Item
                           key={coinOption.value}
                           value={coinOption.value}
                         >
-                          {coinOption.display}
+                          <Flex align="center" gap="2">
+                            {coinOption.image_svg_url && (
+                              <Box
+                                style={{
+                                  width: "20px",
+                                  height: "20px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <img
+                                  src={coinOption.image_svg_url}
+                                  alt={coinOption.name}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "contain",
+                                  }}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              </Box>
+                            )}
+                            <Text>{coinOption.name}</Text>
+                          </Flex>
                         </Select.Item>
                       ))}
                     </Select.Content>
