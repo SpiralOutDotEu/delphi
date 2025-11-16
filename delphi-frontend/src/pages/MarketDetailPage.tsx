@@ -18,10 +18,16 @@ import {
   Spinner,
   Separator,
   Dialog,
+  Select,
 } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { networkConfig } from "../networkConfig";
-import { fetchObjectByAddress, Market } from "../services/graphqlService";
+import {
+  fetchObjectByAddress,
+  Market,
+  getUserPositionsForMarket,
+  Position,
+} from "../services/graphqlService";
 import { COINS } from "../constants";
 
 export function MarketDetailPage() {
@@ -42,6 +48,11 @@ export function MarketDetailPage() {
     positionId?: string;
   } | null>(null);
   const [showPositionModal, setShowPositionModal] = useState(false);
+  const [userPositions, setUserPositions] = useState<Position[]>([]);
+  const [selectedPositionId, setSelectedPositionId] = useState<string | null>(
+    null,
+  );
+  const [isWaitingForNewPosition, setIsWaitingForNewPosition] = useState(false);
 
   const getCurrentNetwork = () => {
     const url = (client as any).url || "";
@@ -126,6 +137,13 @@ export function MarketDetailPage() {
 
       setShowPositionModal(true);
       setIsOpeningPosition(false);
+
+      // Start waiting for new position and reload positions with retry
+      setIsWaitingForNewPosition(true);
+      if (account && marketId && delphiPackageId && delphiPackageId !== "0x0") {
+        // Start retry loop - will retry every 2 seconds up to 10 times
+        loadPositions(0, 10, true);
+      }
     } catch (error: any) {
       const errorMessage =
         error.message ||
@@ -180,6 +198,64 @@ export function MarketDetailPage() {
 
     loadMarket();
   }, [marketId, currentNetwork]);
+
+  // Function to load positions with retry capability
+  const loadPositions = async (
+    retryCount = 0,
+    maxRetries = 10,
+    isWaiting = false,
+  ) => {
+    if (
+      !account ||
+      !marketId ||
+      !delphiPackageId ||
+      delphiPackageId === "0x0"
+    ) {
+      setUserPositions([]);
+      setIsWaitingForNewPosition(false);
+      return;
+    }
+
+    try {
+      const positions = await getUserPositionsForMarket(
+        currentNetwork,
+        account.address,
+        marketId,
+        delphiPackageId,
+      );
+      setUserPositions(positions);
+
+      // Auto-select first position if available
+      if (positions.length > 0) {
+        setSelectedPositionId(positions[0].address);
+        setIsWaitingForNewPosition(false); // Stop waiting once we find positions
+      } else if (isWaiting && retryCount < maxRetries) {
+        // If we're waiting for a new position and haven't found it yet, retry
+        setTimeout(() => {
+          loadPositions(retryCount + 1, maxRetries, isWaiting);
+        }, 2000); // Wait 2 seconds before retrying
+      } else if (isWaiting && retryCount >= maxRetries) {
+        // Stop waiting after max retries
+        setIsWaitingForNewPosition(false);
+      }
+    } catch (err) {
+      console.error("Failed to load positions:", err);
+      setUserPositions([]);
+      if (isWaiting && retryCount < maxRetries) {
+        // Retry on error too
+        setTimeout(() => {
+          loadPositions(retryCount + 1, maxRetries, isWaiting);
+        }, 2000);
+      } else {
+        setIsWaitingForNewPosition(false);
+      }
+    }
+  };
+
+  // Load user positions for this market
+  useEffect(() => {
+    loadPositions();
+  }, [account, marketId, currentNetwork, delphiPackageId]);
 
   if (isLoading) {
     return (
@@ -285,6 +361,18 @@ export function MarketDetailPage() {
   // If percentage is 35%, price is 35¢
   const yesPrice = Math.round(yesPercentage);
   const noPrice = Math.round(noPercentage);
+
+  // Get selected position data
+  const selectedPosition = userPositions.find(
+    (p) => p.address === selectedPositionId,
+  );
+  const positionYesShares = selectedPosition
+    ? BigInt(selectedPosition.asMoveObject.contents.json.yes_shares || "0")
+    : 0n;
+  const positionNoShares = selectedPosition
+    ? BigInt(selectedPosition.asMoveObject.contents.json.no_shares || "0")
+    : 0n;
+  const hasPosition = userPositions.length > 0;
 
   return (
     <Box className="page-container">
@@ -619,57 +707,214 @@ export function MarketDetailPage() {
                           </Flex>
                         </Box>
 
-                        {/* Open Position Button */}
-                        <Button
-                          size="4"
-                          variant="outline"
-                          onClick={handleOpenPosition}
-                          disabled={isOpeningPosition || !account || !market}
-                          style={{
-                            width: "100%",
-                            height: "50px",
-                            fontSize: "16px",
-                            fontWeight: 600,
-                            borderColor: "var(--oracle-border)",
-                            color: "var(--oracle-text-primary)",
-                            opacity:
-                              isOpeningPosition || !account || !market
-                                ? 0.5
-                                : 1,
-                          }}
-                        >
-                          {isOpeningPosition ? (
-                            <Flex align="center" gap="2">
+                        {/* Position Selection or Open Position Button */}
+                        {hasPosition ? (
+                          <Flex direction="column" gap="3">
+                            {/* Position Selector (if multiple positions) */}
+                            {userPositions.length > 1 && (
+                              <Box>
+                                <Text
+                                  size="2"
+                                  mb="2"
+                                  style={{
+                                    display: "block",
+                                    color: "var(--oracle-text-secondary)",
+                                  }}
+                                >
+                                  Select Position
+                                </Text>
+                                <Select.Root
+                                  value={selectedPositionId || undefined}
+                                  onValueChange={setSelectedPositionId}
+                                >
+                                  <Select.Trigger
+                                    style={{ width: "100%" }}
+                                    className="form-input"
+                                  />
+                                  <Select.Content>
+                                    {userPositions.map((pos) => (
+                                      <Select.Item
+                                        key={pos.address}
+                                        value={pos.address}
+                                      >
+                                        Position: {pos.address.slice(0, 8)}...
+                                        {pos.address.slice(-6)} (
+                                        {formatShares(
+                                          BigInt(
+                                            pos.asMoveObject.contents.json
+                                              .yes_shares || "0",
+                                          ) +
+                                            BigInt(
+                                              pos.asMoveObject.contents.json
+                                                .no_shares || "0",
+                                            ),
+                                        )}{" "}
+                                        shares)
+                                      </Select.Item>
+                                    ))}
+                                  </Select.Content>
+                                </Select.Root>
+                              </Box>
+                            )}
+
+                            {/* Position Info */}
+                            {isWaitingForNewPosition && !hasPosition ? (
                               <Box
                                 style={{
-                                  width: "16px",
-                                  height: "16px",
-                                  border: "2px solid rgba(255,255,255,0.3)",
-                                  borderTopColor: "currentColor",
-                                  borderRadius: "50%",
-                                  animation: "spin 0.8s linear infinite",
+                                  background: "var(--oracle-secondary)",
+                                  borderRadius: "8px",
+                                  padding: "16px",
+                                  border: "1px solid var(--oracle-border)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  minHeight: "100px",
                                 }}
-                              />
-                              Opening...
-                            </Flex>
-                          ) : (
-                            "Open Position"
-                          )}
-                        </Button>
+                              >
+                                <Flex direction="column" align="center" gap="3">
+                                  <Spinner size="3" />
+                                  <Text
+                                    size="2"
+                                    style={{
+                                      color: "var(--oracle-text-secondary)",
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    Waiting for position to appear...
+                                  </Text>
+                                </Flex>
+                              </Box>
+                            ) : hasPosition ? (
+                              <Box
+                                style={{
+                                  background: "var(--oracle-secondary)",
+                                  borderRadius: "8px",
+                                  padding: "16px",
+                                  border: "1px solid var(--oracle-border)",
+                                }}
+                              >
+                                <Flex justify="between" align="center" mb="3">
+                                  <Text
+                                    size="2"
+                                    weight="medium"
+                                    style={{
+                                      display: "block",
+                                      color: "var(--oracle-text-primary)",
+                                    }}
+                                  >
+                                    Your Position
+                                  </Text>
+                                  {isWaitingForNewPosition && (
+                                    <Flex align="center" gap="2">
+                                      <Spinner size="1" />
+                                      <Text
+                                        size="1"
+                                        style={{
+                                          color: "var(--oracle-text-secondary)",
+                                        }}
+                                      >
+                                        Updating...
+                                      </Text>
+                                    </Flex>
+                                  )}
+                                </Flex>
+                                <Flex direction="column" gap="2">
+                                  <Flex justify="between" align="center">
+                                    <Text
+                                      size="2"
+                                      style={{
+                                        color: "var(--oracle-text-secondary)",
+                                      }}
+                                    >
+                                      Yes Shares:
+                                    </Text>
+                                    <Text
+                                      size="3"
+                                      weight="bold"
+                                      style={{
+                                        color: "var(--oracle-bullish)",
+                                      }}
+                                    >
+                                      {formatShares(positionYesShares)}
+                                    </Text>
+                                  </Flex>
+                                  <Flex justify="between" align="center">
+                                    <Text
+                                      size="2"
+                                      style={{
+                                        color: "var(--oracle-text-secondary)",
+                                      }}
+                                    >
+                                      No Shares:
+                                    </Text>
+                                    <Text
+                                      size="3"
+                                      weight="bold"
+                                      style={{
+                                        color: "var(--oracle-bearish)",
+                                      }}
+                                    >
+                                      {formatShares(positionNoShares)}
+                                    </Text>
+                                  </Flex>
+                                </Flex>
+                              </Box>
+                            ) : null}
+                          </Flex>
+                        ) : (
+                          <Button
+                            size="4"
+                            variant="outline"
+                            onClick={handleOpenPosition}
+                            disabled={isOpeningPosition || !account || !market}
+                            style={{
+                              width: "100%",
+                              height: "50px",
+                              fontSize: "16px",
+                              fontWeight: 600,
+                              borderColor: "var(--oracle-border)",
+                              color: "var(--oracle-text-primary)",
+                              opacity:
+                                isOpeningPosition || !account || !market
+                                  ? 0.5
+                                  : 1,
+                            }}
+                          >
+                            {isOpeningPosition ? (
+                              <Flex align="center" gap="2">
+                                <Box
+                                  style={{
+                                    width: "16px",
+                                    height: "16px",
+                                    border: "2px solid rgba(255,255,255,0.3)",
+                                    borderTopColor: "currentColor",
+                                    borderRadius: "50%",
+                                    animation: "spin 0.8s linear infinite",
+                                  }}
+                                />
+                                Opening...
+                              </Flex>
+                            ) : (
+                              "Open Position"
+                            )}
+                          </Button>
+                        )}
 
-                        {/* Trade Button */}
-                        <Button
-                          size="4"
-                          className="crypto-button"
-                          style={{
-                            width: "100%",
-                            height: "50px",
-                            fontSize: "16px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Trade
-                        </Button>
+                        {/* Trade Button - Only show if user has a position */}
+                        {hasPosition && (
+                          <Button
+                            size="4"
+                            className="crypto-button"
+                            style={{
+                              width: "100%",
+                              height: "50px",
+                              fontSize: "16px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Trade
+                          </Button>
+                        )}
 
                         <Text
                           size="1"
@@ -791,57 +1036,214 @@ export function MarketDetailPage() {
                           </Flex>
                         </Box>
 
-                        {/* Open Position Button */}
-                        <Button
-                          size="4"
-                          variant="outline"
-                          onClick={handleOpenPosition}
-                          disabled={isOpeningPosition || !account || !market}
-                          style={{
-                            width: "100%",
-                            height: "50px",
-                            fontSize: "16px",
-                            fontWeight: 600,
-                            borderColor: "var(--oracle-border)",
-                            color: "var(--oracle-text-primary)",
-                            opacity:
-                              isOpeningPosition || !account || !market
-                                ? 0.5
-                                : 1,
-                          }}
-                        >
-                          {isOpeningPosition ? (
-                            <Flex align="center" gap="2">
+                        {/* Position Selection or Open Position Button */}
+                        {hasPosition ? (
+                          <Flex direction="column" gap="3">
+                            {/* Position Selector (if multiple positions) */}
+                            {userPositions.length > 1 && (
+                              <Box>
+                                <Text
+                                  size="2"
+                                  mb="2"
+                                  style={{
+                                    display: "block",
+                                    color: "var(--oracle-text-secondary)",
+                                  }}
+                                >
+                                  Select Position
+                                </Text>
+                                <Select.Root
+                                  value={selectedPositionId || undefined}
+                                  onValueChange={setSelectedPositionId}
+                                >
+                                  <Select.Trigger
+                                    style={{ width: "100%" }}
+                                    className="form-input"
+                                  />
+                                  <Select.Content>
+                                    {userPositions.map((pos) => (
+                                      <Select.Item
+                                        key={pos.address}
+                                        value={pos.address}
+                                      >
+                                        Position: {pos.address.slice(0, 8)}...
+                                        {pos.address.slice(-6)} (
+                                        {formatShares(
+                                          BigInt(
+                                            pos.asMoveObject.contents.json
+                                              .yes_shares || "0",
+                                          ) +
+                                            BigInt(
+                                              pos.asMoveObject.contents.json
+                                                .no_shares || "0",
+                                            ),
+                                        )}{" "}
+                                        shares)
+                                      </Select.Item>
+                                    ))}
+                                  </Select.Content>
+                                </Select.Root>
+                              </Box>
+                            )}
+
+                            {/* Position Info */}
+                            {isWaitingForNewPosition && !hasPosition ? (
                               <Box
                                 style={{
-                                  width: "16px",
-                                  height: "16px",
-                                  border: "2px solid rgba(255,255,255,0.3)",
-                                  borderTopColor: "currentColor",
-                                  borderRadius: "50%",
-                                  animation: "spin 0.8s linear infinite",
+                                  background: "var(--oracle-secondary)",
+                                  borderRadius: "8px",
+                                  padding: "16px",
+                                  border: "1px solid var(--oracle-border)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  minHeight: "100px",
                                 }}
-                              />
-                              Opening...
-                            </Flex>
-                          ) : (
-                            "Open Position"
-                          )}
-                        </Button>
+                              >
+                                <Flex direction="column" align="center" gap="3">
+                                  <Spinner size="3" />
+                                  <Text
+                                    size="2"
+                                    style={{
+                                      color: "var(--oracle-text-secondary)",
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    Waiting for position to appear...
+                                  </Text>
+                                </Flex>
+                              </Box>
+                            ) : hasPosition ? (
+                              <Box
+                                style={{
+                                  background: "var(--oracle-secondary)",
+                                  borderRadius: "8px",
+                                  padding: "16px",
+                                  border: "1px solid var(--oracle-border)",
+                                }}
+                              >
+                                <Flex justify="between" align="center" mb="3">
+                                  <Text
+                                    size="2"
+                                    weight="medium"
+                                    style={{
+                                      display: "block",
+                                      color: "var(--oracle-text-primary)",
+                                    }}
+                                  >
+                                    Your Position
+                                  </Text>
+                                  {isWaitingForNewPosition && (
+                                    <Flex align="center" gap="2">
+                                      <Spinner size="1" />
+                                      <Text
+                                        size="1"
+                                        style={{
+                                          color: "var(--oracle-text-secondary)",
+                                        }}
+                                      >
+                                        Updating...
+                                      </Text>
+                                    </Flex>
+                                  )}
+                                </Flex>
+                                <Flex direction="column" gap="2">
+                                  <Flex justify="between" align="center">
+                                    <Text
+                                      size="2"
+                                      style={{
+                                        color: "var(--oracle-text-secondary)",
+                                      }}
+                                    >
+                                      Yes Shares:
+                                    </Text>
+                                    <Text
+                                      size="3"
+                                      weight="bold"
+                                      style={{
+                                        color: "var(--oracle-bullish)",
+                                      }}
+                                    >
+                                      {formatShares(positionYesShares)}
+                                    </Text>
+                                  </Flex>
+                                  <Flex justify="between" align="center">
+                                    <Text
+                                      size="2"
+                                      style={{
+                                        color: "var(--oracle-text-secondary)",
+                                      }}
+                                    >
+                                      No Shares:
+                                    </Text>
+                                    <Text
+                                      size="3"
+                                      weight="bold"
+                                      style={{
+                                        color: "var(--oracle-bearish)",
+                                      }}
+                                    >
+                                      {formatShares(positionNoShares)}
+                                    </Text>
+                                  </Flex>
+                                </Flex>
+                              </Box>
+                            ) : null}
+                          </Flex>
+                        ) : (
+                          <Button
+                            size="4"
+                            variant="outline"
+                            onClick={handleOpenPosition}
+                            disabled={isOpeningPosition || !account || !market}
+                            style={{
+                              width: "100%",
+                              height: "50px",
+                              fontSize: "16px",
+                              fontWeight: 600,
+                              borderColor: "var(--oracle-border)",
+                              color: "var(--oracle-text-primary)",
+                              opacity:
+                                isOpeningPosition || !account || !market
+                                  ? 0.5
+                                  : 1,
+                            }}
+                          >
+                            {isOpeningPosition ? (
+                              <Flex align="center" gap="2">
+                                <Box
+                                  style={{
+                                    width: "16px",
+                                    height: "16px",
+                                    border: "2px solid rgba(255,255,255,0.3)",
+                                    borderTopColor: "currentColor",
+                                    borderRadius: "50%",
+                                    animation: "spin 0.8s linear infinite",
+                                  }}
+                                />
+                                Opening...
+                              </Flex>
+                            ) : (
+                              "Open Position"
+                            )}
+                          </Button>
+                        )}
 
-                        {/* Trade Button */}
-                        <Button
-                          size="4"
-                          className="crypto-button"
-                          style={{
-                            width: "100%",
-                            height: "50px",
-                            fontSize: "16px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Trade
-                        </Button>
+                        {/* Trade Button - Only show if user has a position */}
+                        {hasPosition && (
+                          <Button
+                            size="4"
+                            className="crypto-button"
+                            style={{
+                              width: "100%",
+                              height: "50px",
+                              fontSize: "16px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Trade
+                          </Button>
+                        )}
 
                         <Text
                           size="1"

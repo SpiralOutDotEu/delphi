@@ -54,6 +54,29 @@ export interface ObjectResponse {
     };
 }
 
+export interface Position {
+    address: string;
+    version: string;
+    asMoveObject: {
+        contents: {
+            json: {
+                id: string;
+                market: string;
+                yes_shares: string;
+                no_shares: string;
+            };
+        };
+    };
+}
+
+export interface PositionsResponse {
+    data: {
+        objects: {
+            nodes: Position[];
+        };
+    };
+}
+
 /**
  * Get the GraphQL URL for the current network
  */
@@ -165,5 +188,78 @@ export async function fetchObjectByAddress(
         console.error("Error fetching object:", error);
         throw error;
     }
+}
+
+/**
+ * Fetch all open positions for a user
+ */
+export async function getUserPositions(
+    network: string,
+    owner: string,
+    delphiPackageId: string
+): Promise<Position[]> {
+    const graphqlUrl = getGraphQLUrl(network);
+    const positionType = `${delphiPackageId}::delphi::Position`;
+
+    const query = `
+    query GetUserPositions($owner: SuiAddress!) {
+      objects(filter: { owner: $owner, type: "${positionType}" }) {
+        nodes {
+          address
+          version
+          asMoveObject {
+            contents {
+              json
+            }
+          }
+        }
+      }
+    }
+  `;
+
+    try {
+        const response = await fetch(graphqlUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                query,
+                variables: { owner },
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`GraphQL request failed: ${response.statusText}`);
+        }
+
+        const result: PositionsResponse = await response.json();
+
+        if (result.data?.objects?.nodes) {
+            return result.data.objects.nodes;
+        }
+
+        return [];
+    } catch (error) {
+        console.error("Error fetching user positions:", error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch positions for a user filtered by market ID
+ */
+export async function getUserPositionsForMarket(
+    network: string,
+    owner: string,
+    marketId: string,
+    delphiPackageId: string
+): Promise<Position[]> {
+    const allPositions = await getUserPositions(network, owner, delphiPackageId);
+
+    // Filter positions by market ID
+    return allPositions.filter(
+        (position) => position.asMoveObject.contents.json.market === marketId
+    );
 }
 
