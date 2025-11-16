@@ -1,5 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useSuiClient } from "@mysten/dapp-kit";
+import {
+  useSuiClient,
+  useCurrentAccount,
+  useSignTransaction,
+} from "@mysten/dapp-kit";
+import { Transaction } from "@mysten/sui/transactions";
 import {
   Container,
   Flex,
@@ -12,6 +17,7 @@ import {
   Tabs,
   Spinner,
   Separator,
+  Dialog,
 } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { networkConfig } from "../networkConfig";
@@ -22,11 +28,20 @@ export function MarketDetailPage() {
   const { marketId } = useParams<{ marketId: string }>();
   const navigate = useNavigate();
   const client = useSuiClient();
+  const account = useCurrentAccount();
+  const { mutateAsync: signTransaction } = useSignTransaction();
   const [market, setMarket] = useState<Market | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
   const [selectedSide, setSelectedSide] = useState<"yes" | "no" | null>("yes");
+  const [isOpeningPosition, setIsOpeningPosition] = useState(false);
+  const [positionResult, setPositionResult] = useState<{
+    success: boolean;
+    message: string;
+    positionId?: string;
+  } | null>(null);
+  const [showPositionModal, setShowPositionModal] = useState(false);
 
   const getCurrentNetwork = () => {
     const url = (client as any).url || "";
@@ -38,6 +53,93 @@ export function MarketDetailPage() {
   };
 
   const currentNetwork = getCurrentNetwork();
+  const delphiPackageId =
+    (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
+      ?.delphiPackageId || "0x0";
+
+  const handleOpenPosition = async () => {
+    if (!account || !market) {
+      alert("Please connect your wallet");
+      return;
+    }
+
+    if (!delphiPackageId || delphiPackageId === "0x0") {
+      alert(
+        "Delphi package not found. Please set delphiPackageId in networkConfig.ts",
+      );
+      return;
+    }
+
+    if (!marketId) {
+      alert("Market ID is required");
+      return;
+    }
+
+    setIsOpeningPosition(true);
+    setPositionResult(null);
+
+    try {
+      const tx = new Transaction();
+
+      // Call open_position and get the returned Position object
+      const [position] = tx.moveCall({
+        target: `${delphiPackageId}::delphi::open_position`,
+        arguments: [tx.object(marketId)],
+      });
+
+      // Transfer the returned Position object to the sender
+      tx.transferObjects([position], tx.pure.address(account.address));
+
+      const signature = await signTransaction({
+        transaction: tx,
+      });
+
+      const result = await client.executeTransactionBlock({
+        transactionBlock: signature.bytes,
+        signature: signature.signature,
+        options: {
+          showEffects: true,
+          showObjectChanges: true,
+        },
+      });
+
+      // Find the created position object
+      const createdPosition = result.objectChanges?.find(
+        (change) =>
+          change.type === "created" &&
+          "objectType" in change &&
+          change.objectType?.includes("Position"),
+      );
+
+      if (createdPosition && "objectId" in createdPosition) {
+        setPositionResult({
+          success: true,
+          message: "Position opened successfully!",
+          positionId: createdPosition.objectId,
+        });
+      } else {
+        setPositionResult({
+          success: true,
+          message: "Transaction completed successfully!",
+        });
+      }
+
+      setShowPositionModal(true);
+      setIsOpeningPosition(false);
+    } catch (error: any) {
+      const errorMessage =
+        error.message ||
+        error.data?.message ||
+        (typeof error === "string" ? error : "Failed to open position");
+
+      setPositionResult({
+        success: false,
+        message: errorMessage,
+      });
+      setShowPositionModal(true);
+      setIsOpeningPosition(false);
+    }
+  };
 
   useEffect(() => {
     const loadMarket = async () => {
@@ -51,7 +153,7 @@ export function MarketDetailPage() {
         setIsLoading(true);
         setError(null);
         const object = await fetchObjectByAddress(currentNetwork, marketId);
-        
+
         if (!object || !object.asMoveObject) {
           setError("Market not found");
           setIsLoading(false);
@@ -70,9 +172,7 @@ export function MarketDetailPage() {
         setMarket(marketData);
       } catch (err) {
         console.error("Failed to load market:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load market"
-        );
+        setError(err instanceof Error ? err.message : "Failed to load market");
       } finally {
         setIsLoading(false);
       }
@@ -87,7 +187,11 @@ export function MarketDetailPage() {
         <Container size="4" py="8">
           <Flex justify="center" align="center" py="12">
             <Spinner size="3" />
-            <Text ml="3" size="3" style={{ color: "var(--oracle-text-secondary)" }}>
+            <Text
+              ml="3"
+              size="3"
+              style={{ color: "var(--oracle-text-secondary)" }}
+            >
               Loading market...
             </Text>
           </Flex>
@@ -116,7 +220,7 @@ export function MarketDetailPage() {
   }
 
   const marketData = market.asMoveObject.contents.json;
-  
+
   // Calculate total shares (real + virtual)
   const totalYesShares =
     BigInt(marketData.yes_shares || "0") +
@@ -125,7 +229,7 @@ export function MarketDetailPage() {
     BigInt(marketData.no_shares || "0") +
     BigInt(marketData.virtual_no_shares || "0");
   const totalShares = totalYesShares + totalNoShares;
-  
+
   // Calculate percentages
   const yesPercentage =
     totalShares > 0n
@@ -175,8 +279,6 @@ export function MarketDetailPage() {
 
   // Find coin data from constants
   const coinData = COINS.find((c) => c.value === marketData.coin.toLowerCase());
-  const coinSymbol =
-    coinData?.symbol.toUpperCase() || marketData.coin.toUpperCase();
   const coinImageUrl = coinData?.image_svg_url;
 
   // Calculate prices (in cents, based on percentage)
@@ -186,7 +288,11 @@ export function MarketDetailPage() {
 
   return (
     <Box className="page-container">
-      <Container size="4" py="6" style={{ maxWidth: "1400px", margin: "0 auto" }}>
+      <Container
+        size="4"
+        py="6"
+        style={{ maxWidth: "1400px", margin: "0 auto" }}
+      >
         {/* Header */}
         <Flex justify="between" align="center" mb="6">
           <Button variant="soft" onClick={() => navigate("/explore")}>
@@ -240,14 +346,21 @@ export function MarketDetailPage() {
                 )}
                 <Box>
                   <Heading size="7" mb="2">
-                    Will {marketData.coin} be {getComparatorLabel(marketData.comparator)} $
+                    Will {marketData.coin} be{" "}
+                    {getComparatorLabel(marketData.comparator)} $
                     {formatPrice(marketData.price)} on {marketData.date}?
                   </Heading>
                   <Flex gap="4" align="center" mt="2">
-                    <Text size="2" style={{ color: "var(--oracle-text-muted)" }}>
+                    <Text
+                      size="2"
+                      style={{ color: "var(--oracle-text-muted)" }}
+                    >
                       Volume: ${formatShares(totalYesShares + totalNoShares)}
                     </Text>
-                    <Text size="2" style={{ color: "var(--oracle-text-muted)" }}>
+                    <Text
+                      size="2"
+                      style={{ color: "var(--oracle-text-muted)" }}
+                    >
                       Resolution: {marketData.date}
                     </Text>
                     {!isResolved && (
@@ -294,7 +407,10 @@ export function MarketDetailPage() {
                       border: "1px solid var(--oracle-border)",
                     }}
                   >
-                    <Text size="3" style={{ color: "var(--oracle-text-muted)" }}>
+                    <Text
+                      size="3"
+                      style={{ color: "var(--oracle-text-muted)" }}
+                    >
                       Chart Placeholder
                     </Text>
                   </Box>
@@ -305,7 +421,9 @@ export function MarketDetailPage() {
             {/* Trades Placeholder */}
             <Card className="crypto-card">
               <Box p="6">
-                <Heading size="5" mb="4">Recent Trades</Heading>
+                <Heading size="5" mb="4">
+                  Recent Trades
+                </Heading>
                 <Box
                   style={{
                     minHeight: "200px",
@@ -326,12 +444,19 @@ export function MarketDetailPage() {
           </Flex>
 
           {/* Right Column - Trading Interface */}
-          <Flex direction="column" style={{ flex: "1 1 40%", minWidth: "320px" }} gap="4">
+          <Flex
+            direction="column"
+            style={{ flex: "1 1 40%", minWidth: "320px" }}
+            gap="4"
+          >
             <Card className="crypto-card">
               <Box p="6">
                 <Flex direction="column" gap="4">
                   {/* Buy/Sell Tabs */}
-                  <Tabs.Root value={activeTab} onValueChange={(v) => setActiveTab(v as "buy" | "sell")}>
+                  <Tabs.Root
+                    value={activeTab}
+                    onValueChange={(v) => setActiveTab(v as "buy" | "sell")}
+                  >
                     <Tabs.List
                       style={{
                         background: "var(--oracle-secondary)",
@@ -386,12 +511,12 @@ export function MarketDetailPage() {
                       </Tabs.Trigger>
                     </Tabs.List>
 
-                    <Tabs.Content value="buy" pt="4">
+                    <Tabs.Content value="buy" style={{ paddingTop: "16px" }}>
                       <Flex direction="column" gap="4">
                         <Text size="3" weight="medium">
                           Buy Shares
                         </Text>
-                        
+
                         {/* Yes/No Options - Side by Side */}
                         <Flex direction="row" gap="3">
                           <Button
@@ -406,7 +531,8 @@ export function MarketDetailPage() {
                                 ? {
                                     background: "var(--oracle-bullish)",
                                     color: "white",
-                                    boxShadow: "0 4px 12px rgba(79, 188, 128, 0.4)",
+                                    boxShadow:
+                                      "0 4px 12px rgba(79, 188, 128, 0.4)",
                                   }
                                 : {
                                     background: "rgba(79, 188, 128, 0.2)",
@@ -414,7 +540,11 @@ export function MarketDetailPage() {
                                     border: "1px solid rgba(79, 188, 128, 0.3)",
                                   }),
                             }}
-                            onClick={() => setSelectedSide(selectedSide === "yes" ? null : "yes")}
+                            onClick={() =>
+                              setSelectedSide(
+                                selectedSide === "yes" ? null : "yes",
+                              )
+                            }
                           >
                             Yes {yesPrice}¢
                           </Button>
@@ -430,15 +560,21 @@ export function MarketDetailPage() {
                                 ? {
                                     background: "var(--oracle-bearish)",
                                     color: "white",
-                                    boxShadow: "0 4px 12px rgba(255, 110, 110, 0.4)",
+                                    boxShadow:
+                                      "0 4px 12px rgba(255, 110, 110, 0.4)",
                                   }
                                 : {
                                     background: "rgba(255, 110, 110, 0.2)",
                                     color: "rgba(255, 110, 110, 0.7)",
-                                    border: "1px solid rgba(255, 110, 110, 0.3)",
+                                    border:
+                                      "1px solid rgba(255, 110, 110, 0.3)",
                                   }),
                             }}
-                            onClick={() => setSelectedSide(selectedSide === "no" ? null : "no")}
+                            onClick={() =>
+                              setSelectedSide(
+                                selectedSide === "no" ? null : "no",
+                              )
+                            }
                           >
                             No {noPrice}¢
                           </Button>
@@ -446,7 +582,14 @@ export function MarketDetailPage() {
 
                         {/* Amount Input */}
                         <Box>
-                          <Text size="2" mb="2" style={{ display: "block", color: "var(--oracle-text-secondary)" }}>
+                          <Text
+                            size="2"
+                            mb="2"
+                            style={{
+                              display: "block",
+                              color: "var(--oracle-text-secondary)",
+                            }}
+                          >
                             Amount
                           </Text>
                           <Box
@@ -464,12 +607,55 @@ export function MarketDetailPage() {
                           </Box>
                           <Flex gap="2" mt="2">
                             {["+$1", "+$20", "+$100", "Max"].map((val) => (
-                              <Button key={val} variant="soft" size="2" style={{ flex: 1 }}>
+                              <Button
+                                key={val}
+                                variant="soft"
+                                size="2"
+                                style={{ flex: 1 }}
+                              >
                                 {val}
                               </Button>
                             ))}
                           </Flex>
                         </Box>
+
+                        {/* Open Position Button */}
+                        <Button
+                          size="4"
+                          variant="outline"
+                          onClick={handleOpenPosition}
+                          disabled={isOpeningPosition || !account || !market}
+                          style={{
+                            width: "100%",
+                            height: "50px",
+                            fontSize: "16px",
+                            fontWeight: 600,
+                            borderColor: "var(--oracle-border)",
+                            color: "var(--oracle-text-primary)",
+                            opacity:
+                              isOpeningPosition || !account || !market
+                                ? 0.5
+                                : 1,
+                          }}
+                        >
+                          {isOpeningPosition ? (
+                            <Flex align="center" gap="2">
+                              <Box
+                                style={{
+                                  width: "16px",
+                                  height: "16px",
+                                  border: "2px solid rgba(255,255,255,0.3)",
+                                  borderTopColor: "currentColor",
+                                  borderRadius: "50%",
+                                  animation: "spin 0.8s linear infinite",
+                                }}
+                              />
+                              Opening...
+                            </Flex>
+                          ) : (
+                            "Open Position"
+                          )}
+                        </Button>
 
                         {/* Trade Button */}
                         <Button
@@ -485,18 +671,24 @@ export function MarketDetailPage() {
                           Trade
                         </Button>
 
-                        <Text size="1" style={{ color: "var(--oracle-text-muted)", textAlign: "center" }}>
+                        <Text
+                          size="1"
+                          style={{
+                            color: "var(--oracle-text-muted)",
+                            textAlign: "center",
+                          }}
+                        >
                           By trading, you agree to the Terms of Use.
                         </Text>
                       </Flex>
                     </Tabs.Content>
 
-                    <Tabs.Content value="sell" pt="4">
+                    <Tabs.Content value="sell" style={{ paddingTop: "16px" }}>
                       <Flex direction="column" gap="4">
                         <Text size="3" weight="medium">
                           Sell Shares
                         </Text>
-                        
+
                         {/* Yes/No Options - Side by Side */}
                         <Flex direction="row" gap="3">
                           <Button
@@ -511,7 +703,8 @@ export function MarketDetailPage() {
                                 ? {
                                     background: "var(--oracle-bullish)",
                                     color: "white",
-                                    boxShadow: "0 4px 12px rgba(79, 188, 128, 0.4)",
+                                    boxShadow:
+                                      "0 4px 12px rgba(79, 188, 128, 0.4)",
                                   }
                                 : {
                                     background: "rgba(79, 188, 128, 0.2)",
@@ -519,7 +712,11 @@ export function MarketDetailPage() {
                                     border: "1px solid rgba(79, 188, 128, 0.3)",
                                   }),
                             }}
-                            onClick={() => setSelectedSide(selectedSide === "yes" ? null : "yes")}
+                            onClick={() =>
+                              setSelectedSide(
+                                selectedSide === "yes" ? null : "yes",
+                              )
+                            }
                           >
                             Yes {yesPrice}¢
                           </Button>
@@ -535,15 +732,21 @@ export function MarketDetailPage() {
                                 ? {
                                     background: "var(--oracle-bearish)",
                                     color: "white",
-                                    boxShadow: "0 4px 12px rgba(255, 110, 110, 0.4)",
+                                    boxShadow:
+                                      "0 4px 12px rgba(255, 110, 110, 0.4)",
                                   }
                                 : {
                                     background: "rgba(255, 110, 110, 0.2)",
                                     color: "rgba(255, 110, 110, 0.7)",
-                                    border: "1px solid rgba(255, 110, 110, 0.3)",
+                                    border:
+                                      "1px solid rgba(255, 110, 110, 0.3)",
                                   }),
                             }}
-                            onClick={() => setSelectedSide(selectedSide === "no" ? null : "no")}
+                            onClick={() =>
+                              setSelectedSide(
+                                selectedSide === "no" ? null : "no",
+                              )
+                            }
                           >
                             No {noPrice}¢
                           </Button>
@@ -551,7 +754,14 @@ export function MarketDetailPage() {
 
                         {/* Amount Input */}
                         <Box>
-                          <Text size="2" mb="2" style={{ display: "block", color: "var(--oracle-text-secondary)" }}>
+                          <Text
+                            size="2"
+                            mb="2"
+                            style={{
+                              display: "block",
+                              color: "var(--oracle-text-secondary)",
+                            }}
+                          >
                             Amount
                           </Text>
                           <Box
@@ -569,12 +779,55 @@ export function MarketDetailPage() {
                           </Box>
                           <Flex gap="2" mt="2">
                             {["+$1", "+$20", "+$100", "Max"].map((val) => (
-                              <Button key={val} variant="soft" size="2" style={{ flex: 1 }}>
+                              <Button
+                                key={val}
+                                variant="soft"
+                                size="2"
+                                style={{ flex: 1 }}
+                              >
                                 {val}
                               </Button>
                             ))}
                           </Flex>
                         </Box>
+
+                        {/* Open Position Button */}
+                        <Button
+                          size="4"
+                          variant="outline"
+                          onClick={handleOpenPosition}
+                          disabled={isOpeningPosition || !account || !market}
+                          style={{
+                            width: "100%",
+                            height: "50px",
+                            fontSize: "16px",
+                            fontWeight: 600,
+                            borderColor: "var(--oracle-border)",
+                            color: "var(--oracle-text-primary)",
+                            opacity:
+                              isOpeningPosition || !account || !market
+                                ? 0.5
+                                : 1,
+                          }}
+                        >
+                          {isOpeningPosition ? (
+                            <Flex align="center" gap="2">
+                              <Box
+                                style={{
+                                  width: "16px",
+                                  height: "16px",
+                                  border: "2px solid rgba(255,255,255,0.3)",
+                                  borderTopColor: "currentColor",
+                                  borderRadius: "50%",
+                                  animation: "spin 0.8s linear infinite",
+                                }}
+                              />
+                              Opening...
+                            </Flex>
+                          ) : (
+                            "Open Position"
+                          )}
+                        </Button>
 
                         {/* Trade Button */}
                         <Button
@@ -590,7 +843,13 @@ export function MarketDetailPage() {
                           Trade
                         </Button>
 
-                        <Text size="1" style={{ color: "var(--oracle-text-muted)", textAlign: "center" }}>
+                        <Text
+                          size="1"
+                          style={{
+                            color: "var(--oracle-text-muted)",
+                            textAlign: "center",
+                          }}
+                        >
                           By trading, you agree to the Terms of Use.
                         </Text>
                       </Flex>
@@ -603,10 +862,15 @@ export function MarketDetailPage() {
             {/* Market Stats */}
             <Card className="crypto-card">
               <Box p="6">
-                <Heading size="5" mb="4">Market Statistics</Heading>
+                <Heading size="5" mb="4">
+                  Market Statistics
+                </Heading>
                 <Flex direction="column" gap="3">
                   <Flex justify="between" align="center">
-                    <Text size="3" style={{ color: "var(--oracle-text-secondary)" }}>
+                    <Text
+                      size="3"
+                      style={{ color: "var(--oracle-text-secondary)" }}
+                    >
                       Yes Shares
                     </Text>
                     <Text size="3" weight="bold">
@@ -615,7 +879,10 @@ export function MarketDetailPage() {
                   </Flex>
                   <Separator />
                   <Flex justify="between" align="center">
-                    <Text size="3" style={{ color: "var(--oracle-text-secondary)" }}>
+                    <Text
+                      size="3"
+                      style={{ color: "var(--oracle-text-secondary)" }}
+                    >
                       No Shares
                     </Text>
                     <Text size="3" weight="bold">
@@ -624,7 +891,10 @@ export function MarketDetailPage() {
                   </Flex>
                   <Separator />
                   <Flex justify="between" align="center">
-                    <Text size="3" style={{ color: "var(--oracle-text-secondary)" }}>
+                    <Text
+                      size="3"
+                      style={{ color: "var(--oracle-text-secondary)" }}
+                    >
                       Total Shares
                     </Text>
                     <Text size="3" weight="bold">
@@ -633,7 +903,10 @@ export function MarketDetailPage() {
                   </Flex>
                   <Separator />
                   <Flex justify="between" align="center">
-                    <Text size="3" style={{ color: "var(--oracle-text-secondary)" }}>
+                    <Text
+                      size="3"
+                      style={{ color: "var(--oracle-text-secondary)" }}
+                    >
                       Collateral
                     </Text>
                     <Text size="3" weight="bold">
@@ -646,7 +919,47 @@ export function MarketDetailPage() {
           </Flex>
         </Flex>
       </Container>
+
+      {/* Position Result Dialog */}
+      <Dialog.Root open={showPositionModal} onOpenChange={setShowPositionModal}>
+        <Dialog.Content style={{ maxWidth: 500 }}>
+          <Dialog.Title>
+            {positionResult?.success ? "Success" : "Error"}
+          </Dialog.Title>
+          <Dialog.Description size="2" mb="4">
+            {positionResult?.message}
+            {positionResult?.positionId && (
+              <Box mt="3">
+                <Text
+                  size="2"
+                  weight="bold"
+                  mb="1"
+                  style={{ display: "block" }}
+                >
+                  Position ID:
+                </Text>
+                <Text
+                  size="1"
+                  style={{
+                    fontFamily: "monospace",
+                    wordBreak: "break-all",
+                    color: "var(--oracle-text-secondary)",
+                  }}
+                >
+                  {positionResult.positionId}
+                </Text>
+              </Box>
+            )}
+          </Dialog.Description>
+          <Flex gap="3" justify="end">
+            <Dialog.Close>
+              <Button variant="soft" color="gray">
+                Close
+              </Button>
+            </Dialog.Close>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     </Box>
   );
 }
-
