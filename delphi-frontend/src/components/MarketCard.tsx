@@ -1,4 +1,5 @@
 import { Box, Card, Flex, Text, Badge, Button } from "@radix-ui/themes";
+import { useNavigate } from "react-router-dom";
 import { Market } from "../services/graphqlService";
 import { COINS } from "../constants";
 
@@ -7,6 +8,7 @@ interface MarketCardProps {
 }
 
 export function MarketCard({ market }: MarketCardProps) {
+  const navigate = useNavigate();
   const marketData = market.asMoveObject.contents.json;
 
   // Calculate total shares (real + virtual)
@@ -72,6 +74,7 @@ export function MarketCard({ market }: MarketCardProps) {
         position: "relative",
         cursor: "pointer",
       }}
+      onClick={() => navigate(`/market/${market.address}`)}
     >
       {/* Resolved Badge */}
       {isResolved && (
@@ -353,7 +356,7 @@ export function MarketCard({ market }: MarketCardProps) {
 
             {/* Action Buttons - Polymarket Style */}
             {!isResolved && (
-              <Flex gap="2" mt="3">
+              <Flex gap="2" mt="3" onClick={(e) => e.stopPropagation()}>
                 <Button
                   size="3"
                   className="market-button-yes"
@@ -363,6 +366,10 @@ export function MarketCard({ market }: MarketCardProps) {
                     fontWeight: 600,
                     fontSize: "15px",
                     borderRadius: "10px",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/market/${market.address}`);
                   }}
                 >
                   Yes
@@ -376,6 +383,10 @@ export function MarketCard({ market }: MarketCardProps) {
                     fontWeight: 600,
                     fontSize: "15px",
                     borderRadius: "10px",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/market/${market.address}`);
                   }}
                 >
                   No

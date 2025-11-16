@@ -5,6 +5,7 @@ import { OwnedObjectsPage } from "./pages/OwnedObjectsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { CreateMarketPage } from "./pages/CreateMarketPage";
 import { ExplorePage } from "./pages/ExplorePage";
+import { MarketDetailPage } from "./pages/MarketDetailPage";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/objects" element={<OwnedObjectsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/create-market" element={<CreateMarketPage />} />
+        <Route path="/market/:marketId" element={<MarketDetailPage />} />
       </Routes>
     </BrowserRouter>
   );

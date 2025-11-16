@@ -38,6 +38,22 @@ export interface MarketsResponse {
     };
 }
 
+export interface ObjectResponse {
+    data: {
+        object: {
+            address: string;
+            asMoveObject: {
+                contents: {
+                    type: {
+                        repr: string;
+                    };
+                    json: any;
+                };
+            };
+        } | null;
+    };
+}
+
 /**
  * Get the GraphQL URL for the current network
  */
@@ -100,6 +116,53 @@ export async function fetchMarkets(
         return [];
     } catch (error) {
         console.error("Error fetching markets:", error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch any object by address from GraphQL (generic function)
+ */
+export async function fetchObjectByAddress(
+    network: string,
+    address: string
+): Promise<ObjectResponse["data"]["object"]> {
+    const graphqlUrl = getGraphQLUrl(network);
+
+    const query = `
+    query getObjectByAddress {
+      object(address: "${address}") {
+        address
+        asMoveObject {
+          contents {
+            type {
+              repr
+            }
+            json
+          }
+        }
+      }
+    }
+  `;
+
+    try {
+        const response = await fetch(graphqlUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`GraphQL request failed: ${response.statusText}`);
+        }
+
+        const result: ObjectResponse = await response.json();
+
+        return result.data?.object || null;
+    } catch (error) {
+        console.error("Error fetching object:", error);
         throw error;
     }
 }
