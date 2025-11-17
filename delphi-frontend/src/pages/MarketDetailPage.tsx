@@ -969,7 +969,17 @@ export function MarketDetailPage() {
   const formatPrice = (priceStr: string): string => {
     const price = BigInt(priceStr);
     if (price === 0n) return "0";
-    return (Number(price) / 1_000_000_000).toFixed(9);
+    const num = Number(price) / 1_000_000_000;
+    // Convert to string with 9 decimals to preserve precision
+    const str = num.toFixed(9);
+    // Remove trailing zeros but keep the decimal point if there are non-zero decimals
+    const trimmed = str.replace(/\.?0+$/, "");
+    // Split into integer and decimal parts
+    const [intPart, decPart] = trimmed.split(".");
+    // Add thousand separators to integer part
+    const formattedInt = Number(intPart).toLocaleString("en-US");
+    // Combine with decimal part if it exists
+    return decPart ? `${formattedInt}.${decPart}` : formattedInt;
   };
 
   // Format shares (integers, no decimals)
@@ -996,7 +1006,7 @@ export function MarketDetailPage() {
   };
 
   const getComparatorLabel = (comparator: string): string => {
-    return comparator === "1" ? "≤" : "≥";
+    return comparator === "1" ? "at most" : "at least";
   };
 
   // Find coin data from constants
