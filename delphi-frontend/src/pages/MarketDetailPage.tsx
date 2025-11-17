@@ -1801,7 +1801,7 @@ export function MarketDetailPage() {
                                       Cost:
                                     </Text>
                                     <Text size="3" weight="bold">
-                                      {formatPseudoUsdc(quote)} PSEUDO_USDC
+                                      ${formatPseudoUsdc(quote)}
                                     </Text>
                                   </Flex>
                                 </Flex>
