@@ -45,6 +45,10 @@ const PRICE_SCALE_MIST: u64 = 1_000000; // 1 PSEUDO_USDC (with 6 decimals)
 // Probability scale for view function
 const PROBABILITY_SCALE: u64 = 10_000; // 1.0000
 
+// Default liquidity parameters
+const DEFAULT_INITIAL_VIRTUAL_PER_SIDE: u64 = 500;
+const DEFAULT_B_LIQUIDITY: u64 = 500;
+
 // === LMSR fixed-point constants (WAD = 1e12) ===
 const WAD: u128 = 1_000_000_000_000;      // 1e12 fixed point
 const LN2_WAD: u128 = 693_147_180_559;    // ln(2) * 1e12
@@ -187,8 +191,8 @@ fun init(_otw: DELPHI, ctx: &mut TxContext) {
     // Initialize LMSR AMM configuration with default liquidity parameters
     let config = Config {
         id: object::new(ctx),
-        initial_virtual_per_side: 5_000,  // V: initial virtual shares per side
-        b_liquidity: 5_000,               // b: liquidity parameter, set ≈ V for balanced start
+        initial_virtual_per_side: DEFAULT_INITIAL_VIRTUAL_PER_SIDE,  // V: initial virtual shares per side
+        b_liquidity: DEFAULT_B_LIQUIDITY,               // b: liquidity parameter, set ≈ V for balanced start
     };
     transfer::share_object(config);
 
@@ -603,7 +607,9 @@ fun exp_neg_fp(t_wad: u128): u128 {
 
     let mut i: u128 = 0;
     while (i < n) {
-        val = val / 2; // exact halving per ln2 reduction
+        // Right shift by 1 is equivalent to dividing by 2
+        // but preserves precision better
+        val = val >> 1;
         i = i + 1;
     };
     val
@@ -651,11 +657,12 @@ fun lmsr_cost_fp(q_yes: u64, q_no: u64, b: u64): u64 {
     let ln1p  = ln1p_fp(e_neg);              // ln(1 + e^{-t}) in WAD
 
     let sum_wad: u128 = a_wad + ln1p;        // still WAD
-    let c_fp: u128 = (b_u128 * sum_wad);     // units: shares * WAD
 
-    // Convert to PSEUDO_USDC: * PRICE_SCALE_MIST / WAD
-    let num: u128 = c_fp * (PRICE_SCALE_MIST as u128);
-    let c_mist: u128 = num / WAD;
+    // FIX: Use wad_mul to maintain precision
+    let c_wad: u128 = wad_mul(b_u128 * WAD, sum_wad); // b * sum in WAD
+
+    // Convert to PSEUDO_USDC: multiply by PRICE_SCALE_MIST, divide by WAD
+    let c_mist: u128 = (c_wad * (PRICE_SCALE_MIST as u128)) / WAD;
 
     c_mist as u64
 }
