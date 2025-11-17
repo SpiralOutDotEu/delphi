@@ -35,8 +35,14 @@ const E_INVALID_TYPE: u64 = 19;
 const E_INVALID_RESULT: u64 = 20;
 
 // === Market Outcome Constants ===
+const SIDE_NONE: u8 = 0;
 const SIDE_YES: u8 = 1;
 const SIDE_NO: u8 = 2;
+
+// === Trade Event Constants ===
+const TRADE_TYPE_MARKET_CREATED: u8 = 0;
+const TRADE_TYPE_BUY: u8 = 1;
+const TRADE_TYPE_SELL: u8 = 2;
 
 // Limits / scales
 const MAX_TOTAL_SHARES: u64 = 1_000_000_000;
@@ -172,6 +178,23 @@ public struct ConfigUpdated has copy, drop {
     new_b_liquidity: u64,
 }
 
+public struct Trade has copy, drop {
+    sender: address,
+    market_id: ID,
+    trade_type: u8,
+    side: u8,
+    amount: u64,
+    collateral_delta: u64,
+    collateral_increase: bool,
+    total_collateral: u64,
+    cost_buy_yes: u64,
+    cost_buy_no: u64,
+    cost_sell_yes: u64,
+    cost_sell_no: u64,
+    prob_yes: u64,
+    prob_no: u64,
+}
+
 // === Package Functions ===
 fun init(_otw: DELPHI, ctx: &mut TxContext) {
     // Initialize enclave capability for signature verification
@@ -259,6 +282,18 @@ public fun create_market<T>(
         payout_per_share: 0,
     };
     let market_id = object::id(&market);
+
+    emit_trade_event(
+        config,
+        &market,
+        TRADE_TYPE_MARKET_CREATED,
+        SIDE_NONE,
+        0,
+        0,
+        true,
+        tx_context::sender(ctx),
+    );
+
     transfer::share_object(market);
 
     event::emit(MarketCreated {
@@ -395,6 +430,17 @@ public fun buy_shares(
         new_no_shares: market.no_shares,
     });
 
+    emit_trade_event(
+        config,
+        market,
+        TRADE_TYPE_BUY,
+        side,
+        amount,
+        required_collateral,
+        true,
+        ctx.sender(),
+    );
+
     (payment, position)
 }
 
@@ -438,7 +484,20 @@ public fun sell_shares(
         new_no_shares: market.no_shares,
     });
 
-    coin::take(&mut market.collateral, payout, ctx)
+    let payout_coin = coin::take(&mut market.collateral, payout, ctx);
+
+    emit_trade_event(
+        config,
+        market,
+        TRADE_TYPE_SELL,
+        side,
+        amount,
+        payout,
+        false,
+        ctx.sender(),
+    );
+
+    payout_coin
 }
 
 public fun close_position(
@@ -579,6 +638,57 @@ fun total_yes_shares(market: &Market): u64 {
 /// Total NO shares (virtual + actual)
 fun total_no_shares(market: &Market): u64 {
     market.no_shares + market.virtual_no_shares
+}
+
+fun emit_trade_event(
+    config: &Config,
+    market: &Market,
+    trade_type: u8,
+    side: u8,
+    amount: u64,
+    collateral_delta: u64,
+    collateral_increase: bool,
+    sender: address,
+) {
+    let (prob_yes, prob_no) = view_probabilities(market);
+    let cost_buy_yes = quote_buy(config, market, 1, SIDE_YES);
+    let cost_buy_no = quote_buy(config, market, 1, SIDE_NO);
+    let cost_sell_yes = quote_sell_or_zero(config, market, SIDE_YES);
+    let cost_sell_no = quote_sell_or_zero(config, market, SIDE_NO);
+    event::emit(Trade {
+        sender,
+        market_id: object::id(market),
+        trade_type,
+        side,
+        amount,
+        collateral_delta,
+        collateral_increase,
+        total_collateral: balance::value(&market.collateral),
+        cost_buy_yes,
+        cost_buy_no,
+        cost_sell_yes,
+        cost_sell_no,
+        prob_yes,
+        prob_no,
+    });
+}
+
+fun quote_sell_or_zero(
+    config: &Config,
+    market: &Market,
+    side: u8,
+): u64 {
+    let total_shares = if (side == SIDE_YES) {
+        total_yes_shares(market)
+    } else {
+        total_no_shares(market)
+    };
+
+    if (total_shares == 0) {
+        0
+    } else {
+        quote_sell(config, market, 1, side)
+    }
 }
 
 /// Fixed-point helpers
