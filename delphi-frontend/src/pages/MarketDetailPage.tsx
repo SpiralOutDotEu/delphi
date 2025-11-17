@@ -3,8 +3,10 @@ import {
   useSuiClient,
   useCurrentAccount,
   useSignTransaction,
+  useSuiClientQuery,
 } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
+import { bcs } from "@mysten/sui/bcs";
 import {
   Container,
   Flex,
@@ -19,6 +21,7 @@ import {
   Separator,
   Dialog,
   Select,
+  TextField,
 } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { networkConfig } from "../networkConfig";
@@ -53,6 +56,14 @@ export function MarketDetailPage() {
     null,
   );
   const [isWaitingForNewPosition, setIsWaitingForNewPosition] = useState(false);
+  const [buyAmount, setBuyAmount] = useState<string>("");
+  const [quote, setQuote] = useState<bigint | null>(null);
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  const [isBuyingShares, setIsBuyingShares] = useState(false);
+  const [sellAmount, setSellAmount] = useState<string>("");
+  const [sellQuote, setSellQuote] = useState<bigint | null>(null);
+  const [isLoadingSellQuote, setIsLoadingSellQuote] = useState(false);
+  const [isSellingShares, setIsSellingShares] = useState(false);
 
   const getCurrentNetwork = () => {
     const url = (client as any).url || "";
@@ -67,6 +78,30 @@ export function MarketDetailPage() {
   const delphiPackageId =
     (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
       ?.delphiPackageId || "0x0";
+  const delphiConfigObjectId =
+    (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
+      ?.delphiConfigObjectId || "0x0";
+  const pseudoUsdcPackageId =
+    (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
+      ?.pseudoUsdcPackageId || "0x0";
+
+  const pseudoUsdcCoinType =
+    pseudoUsdcPackageId && pseudoUsdcPackageId !== "0x0"
+      ? `${pseudoUsdcPackageId}::pseudo_usdc::PSEUDO_USDC`
+      : null;
+
+  // Query for user's PSEUDO_USDC coins
+  const { data: pseudoUsdcCoinsData, refetch: refetchPseudoUsdc } =
+    useSuiClientQuery(
+      "getCoins",
+      {
+        owner: account?.address as string,
+        coinType: pseudoUsdcCoinType || "",
+      },
+      {
+        enabled: !!account && !!pseudoUsdcCoinType,
+      },
+    );
 
   const handleOpenPosition = async () => {
     if (!account || !market) {
@@ -159,43 +194,55 @@ export function MarketDetailPage() {
     }
   };
 
-  useEffect(() => {
-    const loadMarket = async () => {
-      if (!marketId) {
-        setError("Market ID is required");
+  // Function to load market data with optional retry
+  const loadMarket = async (retryCount = 0, maxRetries = 0) => {
+    if (!marketId) {
+      setError("Market ID is required");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Only show loading on first attempt
+      if (retryCount === 0) {
+        setIsLoading(true);
+      }
+      setError(null);
+      const object = await fetchObjectByAddress(currentNetwork, marketId);
+
+      if (!object || !object.asMoveObject) {
+        setError("Market not found");
         setIsLoading(false);
         return;
       }
 
-      try {
-        setIsLoading(true);
-        setError(null);
-        const object = await fetchObjectByAddress(currentNetwork, marketId);
-
-        if (!object || !object.asMoveObject) {
-          setError("Market not found");
-          setIsLoading(false);
-          return;
-        }
-
-        const marketData: Market = {
-          address: object.address,
-          asMoveObject: {
-            contents: {
-              json: object.asMoveObject.contents.json,
-            },
+      const marketData: Market = {
+        address: object.address,
+        asMoveObject: {
+          contents: {
+            json: object.asMoveObject.contents.json,
           },
-        };
+        },
+      };
 
-        setMarket(marketData);
-      } catch (err) {
-        console.error("Failed to load market:", err);
+      setMarket(marketData);
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Failed to load market:", err);
+      if (retryCount < maxRetries) {
+        // Retry after delay
+        setTimeout(() => {
+          loadMarket(retryCount + 1, maxRetries);
+        }, 2000);
+      } else {
         setError(err instanceof Error ? err.message : "Failed to load market");
-      } finally {
         setIsLoading(false);
       }
-    };
+    }
+  };
 
+  // Load market on mount
+  useEffect(() => {
     loadMarket();
   }, [marketId, currentNetwork]);
 
@@ -256,6 +303,563 @@ export function MarketDetailPage() {
   useEffect(() => {
     loadPositions();
   }, [account, marketId, currentNetwork, delphiPackageId]);
+
+  // Function to get quote using devInspectTransaction
+  const getQuote = async (
+    amount: bigint,
+    side: "yes" | "no",
+  ): Promise<bigint | null> => {
+    if (
+      !marketId ||
+      !delphiPackageId ||
+      delphiPackageId === "0x0" ||
+      !delphiConfigObjectId ||
+      delphiConfigObjectId === "0x0" ||
+      !account
+    ) {
+      return null;
+    }
+
+    try {
+      const tx = new Transaction();
+      const sideValue = side === "yes" ? 1 : 2; // SIDE_YES = 1, SIDE_NO = 2
+
+      tx.moveCall({
+        target: `${delphiPackageId}::delphi::quote_buy`,
+        arguments: [
+          tx.object(delphiConfigObjectId), // &Config
+          tx.object(marketId), // &Market
+          tx.pure.u64(Number(amount)), // amount: u64
+          tx.pure.u8(sideValue), // side: u8
+        ],
+      });
+
+      // Run the transaction in dev-inspect mode (no state changes)
+      const inspection = await client.devInspectTransactionBlock({
+        sender: account.address,
+        transactionBlock: tx,
+      });
+
+      if (inspection.error) {
+        throw new Error(`devInspect failed: ${inspection.error}`);
+      }
+
+      // devInspect results: first call, first return value
+      const execResult = inspection.results?.[0];
+      if (!execResult?.returnValues?.length) {
+        throw new Error("No return values from quote_buy");
+      }
+
+      const [returnBytes] = execResult.returnValues[0]; // [number[], string]
+      // returnType should be "u64" for your function
+      const quoteValue = bcs.U64.parse(new Uint8Array(returnBytes)); // BigInt
+
+      // Ensure it's a bigint
+      return typeof quoteValue === "bigint" ? quoteValue : BigInt(quoteValue);
+    } catch (error: any) {
+      console.error("Error getting quote:", error);
+      return null;
+    }
+  };
+
+  // Function to get sell quote using devInspectTransaction
+  const getSellQuote = async (
+    amount: bigint,
+    side: "yes" | "no",
+  ): Promise<bigint | null> => {
+    if (
+      !marketId ||
+      !delphiPackageId ||
+      delphiPackageId === "0x0" ||
+      !delphiConfigObjectId ||
+      delphiConfigObjectId === "0x0" ||
+      !account
+    ) {
+      return null;
+    }
+
+    try {
+      const tx = new Transaction();
+      const sideValue = side === "yes" ? 1 : 2; // SIDE_YES = 1, SIDE_NO = 2
+
+      tx.moveCall({
+        target: `${delphiPackageId}::delphi::quote_sell`,
+        arguments: [
+          tx.object(delphiConfigObjectId), // &Config
+          tx.object(marketId), // &Market
+          tx.pure.u64(Number(amount)), // amount: u64
+          tx.pure.u8(sideValue), // side: u8
+        ],
+      });
+
+      // Run the transaction in dev-inspect mode (no state changes)
+      const inspection = await client.devInspectTransactionBlock({
+        sender: account.address,
+        transactionBlock: tx,
+      });
+
+      if (inspection.error) {
+        throw new Error(`devInspect failed: ${inspection.error}`);
+      }
+
+      // devInspect results: first call, first return value
+      const execResult = inspection.results?.[0];
+      if (!execResult?.returnValues?.length) {
+        throw new Error("No return values from quote_sell");
+      }
+
+      const [returnBytes] = execResult.returnValues[0]; // [number[], string]
+      // returnType should be "u64" for your function
+      const quoteValue = bcs.U64.parse(new Uint8Array(returnBytes)); // BigInt
+
+      // Ensure it's a bigint
+      return typeof quoteValue === "bigint" ? quoteValue : BigInt(quoteValue);
+    } catch (error: any) {
+      console.error("Error getting sell quote:", error);
+      return null;
+    }
+  };
+
+  // Fetch buy quote when amount or side changes
+  useEffect(() => {
+    const fetchQuote = async () => {
+      if (!buyAmount || !selectedSide || !market) {
+        setQuote(null);
+        return;
+      }
+
+      const amountNum = parseFloat(buyAmount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        setQuote(null);
+        return;
+      }
+
+      // Shares are in whole units (not MIST), so convert to u64 directly
+      const amountInShares = BigInt(Math.floor(amountNum));
+
+      setIsLoadingQuote(true);
+      const quoteValue = await getQuote(amountInShares, selectedSide);
+      if (quoteValue !== null) {
+        setQuote(quoteValue);
+      } else {
+        setQuote(null);
+      }
+      setIsLoadingQuote(false);
+    };
+
+    // Debounce the quote fetch
+    const timeoutId = setTimeout(() => {
+      fetchQuote();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    buyAmount,
+    selectedSide,
+    marketId,
+    delphiPackageId,
+    delphiConfigObjectId,
+    account,
+    market,
+  ]);
+
+  // Fetch sell quote when amount or side changes
+  useEffect(() => {
+    const fetchSellQuote = async () => {
+      if (!sellAmount || !selectedSide || !market || activeTab !== "sell") {
+        setSellQuote(null);
+        return;
+      }
+
+      const amountNum = parseFloat(sellAmount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        setSellQuote(null);
+        return;
+      }
+
+      // Shares are in whole units (not MIST), so convert to u64 directly
+      const amountInShares = BigInt(Math.floor(amountNum));
+
+      setIsLoadingSellQuote(true);
+      const quoteValue = await getSellQuote(amountInShares, selectedSide);
+      if (quoteValue !== null) {
+        setSellQuote(quoteValue);
+      } else {
+        setSellQuote(null);
+      }
+      setIsLoadingSellQuote(false);
+    };
+
+    // Debounce the quote fetch
+    const timeoutId = setTimeout(() => {
+      fetchSellQuote();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    sellAmount,
+    selectedSide,
+    marketId,
+    delphiPackageId,
+    delphiConfigObjectId,
+    account,
+    market,
+    activeTab,
+  ]);
+
+  // Function to buy shares
+  const handleBuyShares = async () => {
+    if (!account || !market || !selectedSide || !buyAmount) {
+      alert("Please select a side and enter an amount");
+      return;
+    }
+
+    if (!delphiPackageId || delphiPackageId === "0x0") {
+      alert("Delphi package not found");
+      return;
+    }
+
+    if (!delphiConfigObjectId || delphiConfigObjectId === "0x0") {
+      alert("Config object not found");
+      return;
+    }
+
+    if (!selectedPositionId) {
+      alert("Please open a position first");
+      return;
+    }
+
+    if (!quote || quote === 0n) {
+      alert("Please wait for quote to load");
+      return;
+    }
+
+    const amountNum = parseFloat(buyAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    // Shares are in whole units (not MIST), so convert to u64 directly
+    const amountInShares = BigInt(Math.floor(amountNum));
+    const sideValue = selectedSide === "yes" ? 1 : 2;
+
+    // Get PSEUDO_USDC coins
+    const coins = pseudoUsdcCoinsData?.data || [];
+    if (coins.length === 0) {
+      alert("You don't have any PSEUDO_USDC. Please get some from the faucet.");
+      return;
+    }
+
+    // Calculate total balance
+    const totalBalance = coins.reduce((sum, coin) => {
+      return sum + BigInt(coin.balance || "0");
+    }, BigInt(0));
+
+    if (totalBalance < quote) {
+      alert(
+        `Insufficient balance. You need ${formatPseudoUsdc(quote)} PSEUDO_USDC but have ${formatPseudoUsdc(totalBalance)}`,
+      );
+      return;
+    }
+
+    setIsBuyingShares(true);
+
+    try {
+      const tx = new Transaction();
+
+      // Find or merge coins to get enough balance
+      let selectedCoin: string | null = null;
+      let totalBalanceCheck = BigInt(0);
+
+      for (const coin of coins) {
+        const coinBalance = BigInt(coin.balance || "0");
+        totalBalanceCheck += coinBalance;
+        if (coinBalance >= quote) {
+          selectedCoin = coin.coinObjectId;
+          break;
+        }
+      }
+
+      if (selectedCoin) {
+        // Use the coin directly if it has enough balance
+        const coinBalance = BigInt(
+          coins.find((c) => c.coinObjectId === selectedCoin)!.balance || "0",
+        );
+        if (coinBalance > quote) {
+          // Split the coin if it has more than needed
+          const [paymentCoin] = tx.splitCoins(tx.object(selectedCoin), [
+            tx.pure.u64(Number(quote)),
+          ]);
+          const [changeCoin, updatedPosition] = tx.moveCall({
+            target: `${delphiPackageId}::delphi::buy_shares`,
+            arguments: [
+              tx.object(delphiConfigObjectId), // config: &Config
+              tx.object(marketId!), // market: &mut Market
+              tx.object(selectedPositionId), // position: Position
+              paymentCoin, // payment: Coin<PSEUDO_USDC>
+              tx.pure.u64(Number(amountInShares)), // amount: u64
+              tx.pure.u8(sideValue), // side: u8
+            ],
+          });
+          // Transfer change back to user
+          tx.transferObjects([changeCoin], account.address);
+          // Transfer updated position back to user
+          tx.transferObjects([updatedPosition], account.address);
+        } else {
+          // Use the entire coin
+          const [changeCoin, updatedPosition] = tx.moveCall({
+            target: `${delphiPackageId}::delphi::buy_shares`,
+            arguments: [
+              tx.object(delphiConfigObjectId), // config: &Config
+              tx.object(marketId!), // market: &mut Market
+              tx.object(selectedPositionId), // position: Position
+              tx.object(selectedCoin), // payment: Coin<PSEUDO_USDC>
+              tx.pure.u64(Number(amountInShares)), // amount: u64
+              tx.pure.u8(sideValue), // side: u8
+            ],
+          });
+          // Transfer change back to user (if any)
+          tx.transferObjects([changeCoin], account.address);
+          // Transfer updated position back to user
+          tx.transferObjects([updatedPosition], account.address);
+        }
+      } else if (totalBalanceCheck >= quote) {
+        // Merge coins and split
+        const primaryCoin = coins[0].coinObjectId;
+        if (coins.length > 1) {
+          tx.mergeCoins(
+            tx.object(primaryCoin),
+            coins.slice(1).map((c) => tx.object(c.coinObjectId)),
+          );
+        }
+        const [paymentCoin] = tx.splitCoins(tx.object(primaryCoin), [
+          tx.pure.u64(Number(quote)),
+        ]);
+        const [changeCoin, updatedPosition] = tx.moveCall({
+          target: `${delphiPackageId}::delphi::buy_shares`,
+          arguments: [
+            tx.object(delphiConfigObjectId), // config: &Config
+            tx.object(marketId!), // market: &mut Market
+            tx.object(selectedPositionId), // position: Position
+            paymentCoin, // payment: Coin<PSEUDO_USDC>
+            tx.pure.u64(Number(amountInShares)), // amount: u64
+            tx.pure.u8(sideValue), // side: u8
+          ],
+        });
+        // Transfer change back to user
+        tx.transferObjects([changeCoin], account.address);
+        // Transfer updated position back to user
+        tx.transferObjects([updatedPosition], account.address);
+      } else {
+        alert("Insufficient balance");
+        setIsBuyingShares(false);
+        return;
+      }
+
+      const signature = await signTransaction({
+        transaction: tx,
+      });
+
+      await client.executeTransactionBlock({
+        transactionBlock: signature.bytes,
+        signature: signature.signature,
+        options: {
+          showEffects: true,
+          showObjectChanges: true,
+        },
+      });
+
+      // Reset form
+      setBuyAmount("");
+      setQuote(null);
+      refetchPseudoUsdc();
+
+      // Wait a bit for transaction to be indexed, then reload data
+      setTimeout(() => {
+        // Reload market data to update statistics (with retry)
+        loadMarket(0, 5);
+
+        // Reload positions with retry (similar to after opening position)
+        setIsWaitingForNewPosition(true);
+        if (
+          account &&
+          marketId &&
+          delphiPackageId &&
+          delphiPackageId !== "0x0"
+        ) {
+          loadPositions(0, 10, true);
+        } else {
+          loadPositions();
+        }
+      }, 2000); // Wait 2 seconds for transaction to be indexed
+
+      setPositionResult({
+        success: true,
+        message: "Shares bought successfully!",
+      });
+      setShowPositionModal(true);
+      setIsBuyingShares(false);
+    } catch (error: any) {
+      console.error("Error buying shares:", error);
+      const errorMessage =
+        error.message ||
+        error.data?.message ||
+        (typeof error === "string" ? error : "Failed to buy shares");
+
+      setPositionResult({
+        success: false,
+        message: errorMessage,
+      });
+      setShowPositionModal(true);
+      setIsBuyingShares(false);
+    }
+  };
+
+  // Function to sell shares
+  const handleSellShares = async () => {
+    if (!account || !market || !selectedSide || !sellAmount) {
+      alert("Please select a side and enter an amount");
+      return;
+    }
+
+    if (!delphiPackageId || delphiPackageId === "0x0") {
+      alert("Delphi package not found");
+      return;
+    }
+
+    if (!delphiConfigObjectId || delphiConfigObjectId === "0x0") {
+      alert("Config object not found");
+      return;
+    }
+
+    if (!selectedPositionId) {
+      alert("Please open a position first");
+      return;
+    }
+
+    if (!sellQuote || sellQuote === 0n) {
+      alert("Please wait for quote to load");
+      return;
+    }
+
+    const amountNum = parseFloat(sellAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    // Shares are in whole units (not MIST), so convert to u64 directly
+    const amountInShares = BigInt(Math.floor(amountNum));
+    const sideValue = selectedSide === "yes" ? 1 : 2;
+
+    // Check if user has enough shares
+    const selectedPosition = userPositions.find(
+      (p) => p.address === selectedPositionId,
+    );
+    if (!selectedPosition) {
+      alert("Position not found");
+      return;
+    }
+
+    const availableShares =
+      sideValue === 1
+        ? BigInt(selectedPosition.asMoveObject.contents.json.yes_shares || "0")
+        : BigInt(selectedPosition.asMoveObject.contents.json.no_shares || "0");
+
+    if (availableShares < amountInShares) {
+      alert(
+        `Insufficient shares. You have ${availableShares.toString()} ${selectedSide === "yes" ? "yes" : "no"} shares but trying to sell ${amountInShares.toString()}`,
+      );
+      return;
+    }
+
+    setIsSellingShares(true);
+
+    try {
+      const tx = new Transaction();
+
+      // Call sell_shares - position is passed as mutable reference, so it's modified in place
+      const payoutCoin = tx.moveCall({
+        target: `${delphiPackageId}::delphi::sell_shares`,
+        arguments: [
+          tx.object(delphiConfigObjectId), // config: &Config
+          tx.object(marketId!), // market: &mut Market
+          tx.object(selectedPositionId), // position: &mut Position
+          tx.pure.u64(Number(amountInShares)), // amount: u64
+          tx.pure.u8(sideValue), // side: u8
+        ],
+      });
+
+      // Transfer the payout coin back to user
+      tx.transferObjects([payoutCoin], account.address);
+
+      const signature = await signTransaction({
+        transaction: tx,
+      });
+
+      await client.executeTransactionBlock({
+        transactionBlock: signature.bytes,
+        signature: signature.signature,
+        options: {
+          showEffects: true,
+          showObjectChanges: true,
+        },
+      });
+
+      // Reset form and reload data
+      setSellAmount("");
+      setSellQuote(null);
+      refetchPseudoUsdc();
+
+      // Wait a bit for transaction to be indexed, then reload data
+      setTimeout(() => {
+        // Reload market data to update statistics (with retry)
+        loadMarket(0, 5);
+
+        // Reload positions with retry (similar to after opening position)
+        setIsWaitingForNewPosition(true);
+        if (
+          account &&
+          marketId &&
+          delphiPackageId &&
+          delphiPackageId !== "0x0"
+        ) {
+          loadPositions(0, 10, true);
+        } else {
+          loadPositions();
+        }
+      }, 2000); // Wait 2 seconds for transaction to be indexed
+
+      setPositionResult({
+        success: true,
+        message: "Shares sold successfully!",
+      });
+      setShowPositionModal(true);
+      setIsSellingShares(false);
+    } catch (error: any) {
+      console.error("Error selling shares:", error);
+      const errorMessage =
+        error.message ||
+        error.data?.message ||
+        (typeof error === "string" ? error : "Failed to sell shares");
+
+      setPositionResult({
+        success: false,
+        message: errorMessage,
+      });
+      setShowPositionModal(true);
+      setIsSellingShares(false);
+    }
+  };
+
+  // Format PSEUDO_USDC balance
+  const formatPseudoUsdc = (balance: bigint) => {
+    const divisor = BigInt(1_000_000); // 6 decimals for PSEUDO_USDC
+    const whole = balance / divisor;
+    const fractional = balance % divisor;
+    return `${whole}.${fractional.toString().padStart(6, "0")}`;
+  };
 
   if (isLoading) {
     return (
@@ -327,24 +931,25 @@ export function MarketDetailPage() {
     return (Number(price) / 1_000_000_000).toFixed(9);
   };
 
+  // Format shares (integers, no decimals)
   const formatShares = (shares: bigint): string => {
-    const num = Number(shares) / 1_000_000_000; // Convert from MIST to SUI
+    const num = Number(shares);
     if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`;
     if (num >= 1_000) return `${(num / 1_000).toFixed(2)}k`;
-    return num.toFixed(2);
+    return num.toLocaleString(); // Format as integer with thousand separators
   };
 
   const formatCollateral = (collateral: any): string => {
-    // Collateral is a Balance<SUI> object
+    // Collateral is a Balance<PSEUDO_USDC> object (6 decimals)
     // The GraphQL response might have it as a string or object
     if (!collateral) return "0";
     if (typeof collateral === "string") {
       const value = BigInt(collateral);
-      return formatShares(value);
+      return formatPseudoUsdc(value);
     }
     if (collateral.value) {
       const value = BigInt(collateral.value);
-      return formatShares(value);
+      return formatPseudoUsdc(value);
     }
     return "0";
   };
@@ -678,33 +1283,86 @@ export function MarketDetailPage() {
                               color: "var(--oracle-text-secondary)",
                             }}
                           >
-                            Amount
+                            Amount (shares)
                           </Text>
-                          <Box
-                            style={{
-                              background: "var(--oracle-secondary)",
-                              borderRadius: "8px",
-                              padding: "16px",
-                              border: "1px solid var(--oracle-border)",
-                              textAlign: "center",
+                          <TextField.Root
+                            type="number"
+                            value={buyAmount}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Only allow numbers and decimal point
+                              if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                                setBuyAmount(value);
+                              }
                             }}
-                          >
-                            <Text size="6" weight="bold">
-                              $0
-                            </Text>
-                          </Box>
+                            placeholder="0"
+                            style={{
+                              fontSize: "24px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              height: "60px",
+                            }}
+                            disabled={!selectedSide || !hasPosition}
+                          />
                           <Flex gap="2" mt="2">
-                            {["+$1", "+$20", "+$100", "Max"].map((val) => (
+                            {[
+                              { label: "+1", value: "1" },
+                              { label: "+20", value: "20" },
+                              { label: "+100", value: "100" },
+                            ].map(({ label, value }) => (
                               <Button
-                                key={val}
+                                key={label}
                                 variant="soft"
                                 size="2"
                                 style={{ flex: 1 }}
+                                onClick={() => {
+                                  const current = parseFloat(buyAmount) || 0;
+                                  setBuyAmount(
+                                    String(current + parseFloat(value)),
+                                  );
+                                }}
+                                disabled={!selectedSide || !hasPosition}
                               >
-                                {val}
+                                {label}
                               </Button>
                             ))}
                           </Flex>
+                          {/* Quote Display */}
+                          {selectedSide && buyAmount && (
+                            <Box
+                              mt="3"
+                              p="3"
+                              style={{
+                                background: "var(--oracle-secondary)",
+                                borderRadius: "8px",
+                                border: "1px solid var(--oracle-border)",
+                              }}
+                            >
+                              {isLoadingQuote ? (
+                                <Flex align="center" gap="2" justify="center">
+                                  <Spinner size="1" />
+                                  <Text size="2" color="gray">
+                                    Calculating quote...
+                                  </Text>
+                                </Flex>
+                              ) : quote !== null && quote > 0n ? (
+                                <Flex direction="column" gap="1">
+                                  <Flex justify="between" align="center">
+                                    <Text size="2" color="gray">
+                                      Cost:
+                                    </Text>
+                                    <Text size="3" weight="bold">
+                                      {formatPseudoUsdc(quote)} PSEUDO_USDC
+                                    </Text>
+                                  </Flex>
+                                </Flex>
+                              ) : buyAmount && parseFloat(buyAmount) > 0 ? (
+                                <Text size="2" color="red">
+                                  Unable to get quote
+                                </Text>
+                              ) : null}
+                            </Box>
+                          )}
                         </Box>
 
                         {/* Position Selection or Open Position Button */}
@@ -900,7 +1558,7 @@ export function MarketDetailPage() {
                           </Button>
                         )}
 
-                        {/* Trade Button - Only show if user has a position */}
+                        {/* Buy Button - Only show if user has a position */}
                         {hasPosition && (
                           <Button
                             size="4"
@@ -911,8 +1569,25 @@ export function MarketDetailPage() {
                               fontSize: "16px",
                               fontWeight: 600,
                             }}
+                            onClick={handleBuyShares}
+                            disabled={
+                              isBuyingShares ||
+                              !selectedSide ||
+                              !buyAmount ||
+                              parseFloat(buyAmount) <= 0 ||
+                              !quote ||
+                              quote === 0n ||
+                              isLoadingQuote
+                            }
                           >
-                            Trade
+                            {isBuyingShares ? (
+                              <Flex align="center" gap="2">
+                                <Spinner size="1" />
+                                Buying...
+                              </Flex>
+                            ) : (
+                              `Buy ${selectedSide === "yes" ? "Yes" : "No"} Shares`
+                            )}
                           </Button>
                         )}
 
@@ -1007,33 +1682,86 @@ export function MarketDetailPage() {
                               color: "var(--oracle-text-secondary)",
                             }}
                           >
-                            Amount
+                            Amount (shares)
                           </Text>
-                          <Box
-                            style={{
-                              background: "var(--oracle-secondary)",
-                              borderRadius: "8px",
-                              padding: "16px",
-                              border: "1px solid var(--oracle-border)",
-                              textAlign: "center",
+                          <TextField.Root
+                            type="number"
+                            value={sellAmount}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Only allow numbers and decimal point
+                              if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                                setSellAmount(value);
+                              }
                             }}
-                          >
-                            <Text size="6" weight="bold">
-                              $0
-                            </Text>
-                          </Box>
+                            placeholder="0"
+                            style={{
+                              fontSize: "24px",
+                              fontWeight: "bold",
+                              textAlign: "center",
+                              height: "60px",
+                            }}
+                            disabled={!selectedSide || !hasPosition}
+                          />
                           <Flex gap="2" mt="2">
-                            {["+$1", "+$20", "+$100", "Max"].map((val) => (
+                            {[
+                              { label: "+1", value: "1" },
+                              { label: "+20", value: "20" },
+                              { label: "+100", value: "100" },
+                            ].map(({ label, value }) => (
                               <Button
-                                key={val}
+                                key={label}
                                 variant="soft"
                                 size="2"
                                 style={{ flex: 1 }}
+                                onClick={() => {
+                                  const current = parseFloat(sellAmount) || 0;
+                                  setSellAmount(
+                                    String(current + parseFloat(value)),
+                                  );
+                                }}
+                                disabled={!selectedSide || !hasPosition}
                               >
-                                {val}
+                                {label}
                               </Button>
                             ))}
                           </Flex>
+                          {/* Quote Display */}
+                          {selectedSide && sellAmount && (
+                            <Box
+                              mt="3"
+                              p="3"
+                              style={{
+                                background: "var(--oracle-secondary)",
+                                borderRadius: "8px",
+                                border: "1px solid var(--oracle-border)",
+                              }}
+                            >
+                              {isLoadingSellQuote ? (
+                                <Flex align="center" gap="2" justify="center">
+                                  <Spinner size="1" />
+                                  <Text size="2" color="gray">
+                                    Calculating quote...
+                                  </Text>
+                                </Flex>
+                              ) : sellQuote !== null && sellQuote > 0n ? (
+                                <Flex direction="column" gap="1">
+                                  <Flex justify="between" align="center">
+                                    <Text size="2" color="gray">
+                                      Payout:
+                                    </Text>
+                                    <Text size="3" weight="bold">
+                                      {formatPseudoUsdc(sellQuote)} PSEUDO_USDC
+                                    </Text>
+                                  </Flex>
+                                </Flex>
+                              ) : sellAmount && parseFloat(sellAmount) > 0 ? (
+                                <Text size="2" color="red">
+                                  Unable to get quote
+                                </Text>
+                              ) : null}
+                            </Box>
+                          )}
                         </Box>
 
                         {/* Position Selection or Open Position Button */}
@@ -1229,7 +1957,7 @@ export function MarketDetailPage() {
                           </Button>
                         )}
 
-                        {/* Trade Button - Only show if user has a position */}
+                        {/* Sell Button - Only show if user has a position */}
                         {hasPosition && (
                           <Button
                             size="4"
@@ -1240,8 +1968,25 @@ export function MarketDetailPage() {
                               fontSize: "16px",
                               fontWeight: 600,
                             }}
+                            onClick={handleSellShares}
+                            disabled={
+                              isSellingShares ||
+                              !selectedSide ||
+                              !sellAmount ||
+                              parseFloat(sellAmount) <= 0 ||
+                              !sellQuote ||
+                              sellQuote === 0n ||
+                              isLoadingSellQuote
+                            }
                           >
-                            Trade
+                            {isSellingShares ? (
+                              <Flex align="center" gap="2">
+                                <Spinner size="1" />
+                                Selling...
+                              </Flex>
+                            ) : (
+                              `Sell ${selectedSide === "yes" ? "Yes" : "No"} Shares`
+                            )}
                           </Button>
                         )}
 
@@ -1312,7 +2057,7 @@ export function MarketDetailPage() {
                       Collateral
                     </Text>
                     <Text size="3" weight="bold">
-                      {formatCollateral(marketData.collateral)} SUI
+                      {formatCollateral(marketData.collateral)} PSEUDO_USDC
                     </Text>
                   </Flex>
                 </Flex>
