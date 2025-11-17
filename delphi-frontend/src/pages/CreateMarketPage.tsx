@@ -24,7 +24,6 @@ import {
   API_ENDPOINT,
   MARKET_TYPE,
   MARKET_RESULT,
-  type Coin,
 } from "../constants";
 
 interface ApiResponse {

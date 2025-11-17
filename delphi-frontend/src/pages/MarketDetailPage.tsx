@@ -23,6 +23,8 @@ import {
   Select,
   TextField,
 } from "@radix-ui/themes";
+import { LineChart } from "@mui/x-charts/LineChart";
+import { DataGrid } from "@mui/x-data-grid";
 import { useEffect, useState } from "react";
 import { networkConfig } from "../networkConfig";
 import {
@@ -30,6 +32,8 @@ import {
   Market,
   getUserPositionsForMarket,
   Position,
+  fetchMarketTrades,
+  TradeEvent,
 } from "../services/graphqlService";
 import { COINS } from "../constants";
 
@@ -64,6 +68,8 @@ export function MarketDetailPage() {
   const [sellQuote, setSellQuote] = useState<bigint | null>(null);
   const [isLoadingSellQuote, setIsLoadingSellQuote] = useState(false);
   const [isSellingShares, setIsSellingShares] = useState(false);
+  const [tradeEvents, setTradeEvents] = useState<TradeEvent[]>([]);
+  const [isLoadingTrades, setIsLoadingTrades] = useState(false);
 
   const getCurrentNetwork = () => {
     const url = (client as any).url || "";
@@ -241,10 +247,34 @@ export function MarketDetailPage() {
     }
   };
 
+  // Function to load trade events
+  const loadTrades = async () => {
+    if (!marketId || !delphiPackageId || delphiPackageId === "0x0") {
+      setTradeEvents([]);
+      return;
+    }
+
+    setIsLoadingTrades(true);
+    try {
+      const trades = await fetchMarketTrades(
+        currentNetwork,
+        marketId,
+        delphiPackageId,
+      );
+      setTradeEvents(trades);
+    } catch (err) {
+      console.error("Failed to load trades:", err);
+      setTradeEvents([]);
+    } finally {
+      setIsLoadingTrades(false);
+    }
+  };
+
   // Load market on mount
   useEffect(() => {
     loadMarket();
-  }, [marketId, currentNetwork]);
+    loadTrades();
+  }, [marketId, currentNetwork, delphiPackageId]);
 
   // Function to load positions with retry capability
   const loadPositions = async (
@@ -692,6 +722,9 @@ export function MarketDetailPage() {
         } else {
           loadPositions();
         }
+
+        // Reload trades
+        loadTrades();
       }, 2000); // Wait 2 seconds for transaction to be indexed
 
       setPositionResult({
@@ -829,6 +862,9 @@ export function MarketDetailPage() {
         } else {
           loadPositions();
         }
+
+        // Reload trades
+        loadTrades();
       }, 2000); // Wait 2 seconds for transaction to be indexed
 
       setPositionResult({
@@ -901,7 +937,7 @@ export function MarketDetailPage() {
 
   const marketData = market.asMoveObject.contents.json;
 
-  // Calculate total shares (real + virtual)
+  // Calculate total shares (real + virtual) for percentages/display
   const totalYesShares =
     BigInt(marketData.yes_shares || "0") +
     BigInt(marketData.virtual_yes_shares || "0");
@@ -909,6 +945,11 @@ export function MarketDetailPage() {
     BigInt(marketData.no_shares || "0") +
     BigInt(marketData.virtual_no_shares || "0");
   const totalShares = totalYesShares + totalNoShares;
+
+  // Calculate actual shares (without virtual) for statistics
+  const actualYesShares = BigInt(marketData.yes_shares || "0");
+  const actualNoShares = BigInt(marketData.no_shares || "0");
+  const actualTotalShares = actualYesShares + actualNoShares;
 
   // Calculate percentages
   const yesPercentage =
@@ -962,10 +1003,88 @@ export function MarketDetailPage() {
   const coinData = COINS.find((c) => c.value === marketData.coin.toLowerCase());
   const coinImageUrl = coinData?.image_svg_url;
 
-  // Calculate prices (in cents, based on percentage)
-  // If percentage is 35%, price is 35¢
-  const yesPrice = Math.round(yesPercentage);
-  const noPrice = Math.round(noPercentage);
+  // Get latest trade event for current prices
+  const latestTrade =
+    tradeEvents.length > 0 ? tradeEvents[tradeEvents.length - 1] : null;
+
+  // Calculate prices from latest trade event cost values (in cents)
+  // Cost values are in smallest unit (MIST), PSEUDO_USDC has 6 decimals
+  // Convert to cents: divide by 1_000_000 to get PSEUDO_USDC, then multiply by 100 to get cents
+  // Round to one decimal place
+  const buyYesPrice = latestTrade
+    ? Math.round(
+        (Number(latestTrade.contents.json.cost_buy_yes) / 1_000_000) * 100 * 10,
+      ) / 10
+    : Math.round(yesPercentage * 10) / 10;
+  const buyNoPrice = latestTrade
+    ? Math.round(
+        (Number(latestTrade.contents.json.cost_buy_no) / 1_000_000) * 100 * 10,
+      ) / 10
+    : Math.round(noPercentage * 10) / 10;
+  const sellYesPrice = latestTrade
+    ? Math.round(
+        (Number(latestTrade.contents.json.cost_sell_yes) / 1_000_000) *
+          100 *
+          10,
+      ) / 10
+    : Math.round(yesPercentage * 10) / 10;
+  const sellNoPrice = latestTrade
+    ? Math.round(
+        (Number(latestTrade.contents.json.cost_sell_no) / 1_000_000) * 100 * 10,
+      ) / 10
+    : Math.round(noPercentage * 10) / 10;
+
+  // Use appropriate prices based on active tab
+  const yesPrice = activeTab === "buy" ? buyYesPrice : sellYesPrice;
+  const noPrice = activeTab === "buy" ? buyNoPrice : sellNoPrice;
+
+  // Prepare chart data from trade events
+  const chartData = tradeEvents.map((event) => ({
+    time: new Date(event.timestamp).getTime(),
+    timeLabel: new Date(event.timestamp).toLocaleTimeString(),
+    yesPrice: Number(event.contents.json.prob_yes) / 100,
+    noPrice: Number(event.contents.json.prob_no) / 100,
+    costBuyYes: Number(event.contents.json.cost_buy_yes) / 1_000_000, // Convert to PSEUDO_USDC
+    costBuyNo: Number(event.contents.json.cost_buy_no) / 1_000_000,
+    costSellYes: Number(event.contents.json.cost_sell_yes) / 1_000_000,
+    costSellNo: Number(event.contents.json.cost_sell_no) / 1_000_000,
+    totalCollateral: Number(event.contents.json.total_collateral) / 1_000_000,
+  }));
+
+  // Prepare table data for trades
+  const tradesTableData = tradeEvents
+    .filter((event) => event.contents.json.trade_type !== 0) // Filter out market creation
+    .map((event, index) => ({
+      id: `${event.timestamp}-${index}`,
+      timestamp: new Date(event.timestamp).toLocaleString(),
+      type: event.contents.json.trade_type === 1 ? "Buy" : "Sell",
+      side:
+        event.contents.json.side === 1
+          ? "YES"
+          : event.contents.json.side === 2
+            ? "NO"
+            : "N/A",
+      amount: event.contents.json.amount,
+      cost: (Number(event.contents.json.collateral_delta) / 1_000_000).toFixed(
+        6,
+      ),
+      probYes: (Number(event.contents.json.prob_yes) / 100).toFixed(2),
+      probNo: (Number(event.contents.json.prob_no) / 100).toFixed(2),
+      totalCollateral: (
+        Number(event.contents.json.total_collateral) / 1_000_000
+      ).toFixed(6),
+      sender: event.sender.address,
+    }));
+
+  // Calculate statistics from trade events
+  const totalTrades = tradesTableData.length;
+  const totalVolume =
+    tradeEvents.reduce(
+      (sum, event) => sum + Number(event.contents.json.collateral_delta),
+      0,
+    ) / 1_000_000;
+  const buyTrades = tradesTableData.filter((t) => t.type === "Buy").length;
+  const sellTrades = tradesTableData.filter((t) => t.type === "Sell").length;
 
   // Get selected position data
   const selectedPosition = userPositions.find(
@@ -981,10 +1100,16 @@ export function MarketDetailPage() {
 
   return (
     <Box className="page-container">
-      <Container
-        size="4"
-        py="6"
-        style={{ maxWidth: "1400px", margin: "0 auto" }}
+      <Box
+        style={{
+          maxWidth: "1800px",
+          margin: "0 auto",
+          width: "100%",
+          padding: "24px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+        }}
       >
         {/* Header */}
         <Flex justify="between" align="center" mb="6">
@@ -1007,8 +1132,8 @@ export function MarketDetailPage() {
           )}
         </Flex>
 
-        {/* Market Question Header */}
-        <Card className="crypto-card" mb="4">
+        {/* Market Question Header - Full Width */}
+        <Card className="crypto-card" mb="4" style={{ width: "100%" }}>
           <Box p="6">
             <Flex direction="column" gap="4">
               <Flex align="center" gap="3">
@@ -1068,30 +1193,368 @@ export function MarketDetailPage() {
           </Box>
         </Card>
 
-        <Flex gap="4" direction={{ initial: "column", lg: "row" }}>
+        <Flex
+          gap="4"
+          direction={{ initial: "column", lg: "row" }}
+          style={{ width: "100%", justifyContent: "center" }}
+        >
           {/* Left Column - Chart and Stats */}
-          <Flex direction="column" style={{ flex: "1 1 60%" }} gap="4">
-            {/* Chart Placeholder */}
+          <Flex
+            direction="column"
+            style={{ flex: "8 1 0", minWidth: 0, maxWidth: "100%" }}
+            gap="4"
+          >
+            {/* Price History Chart */}
             <Card className="crypto-card">
               <Box p="6">
                 <Flex direction="column" gap="4">
                   <Flex justify="between" align="center">
                     <Heading size="5">Price History</Heading>
-                    <Flex gap="2">
-                      {["1H", "6H", "1D", "1W", "1M", "ALL"].map((period) => (
-                        <Button
-                          key={period}
-                          variant={period === "ALL" ? "solid" : "soft"}
-                          size="1"
-                        >
-                          {period}
-                        </Button>
-                      ))}
-                    </Flex>
                   </Flex>
+                  {isLoadingTrades ? (
+                    <Box
+                      style={{
+                        height: "300px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Spinner size="3" />
+                    </Box>
+                  ) : chartData.length > 0 ? (
+                    <Box
+                      style={{
+                        height: "300px",
+                        width: "100%",
+                      }}
+                    >
+                      <LineChart
+                        xAxis={[
+                          {
+                            data: chartData.map((_, index) => index),
+                            valueFormatter: (value: number) => {
+                              const dataPoint = chartData[value];
+                              return dataPoint
+                                ? new Date(dataPoint.time).toLocaleTimeString()
+                                : "";
+                            },
+                            label: "Time",
+                          },
+                        ]}
+                        series={[
+                          {
+                            label: "YES Price (%)",
+                            data: chartData.map((d) => d.yesPrice),
+                            color: "#4FBC80",
+                            curve: "monotoneX",
+                          },
+                          {
+                            label: "NO Price (%)",
+                            data: chartData.map((d) => d.noPrice),
+                            color: "#FF6E6E",
+                            curve: "monotoneX",
+                          },
+                        ]}
+                        sx={{
+                          "& .MuiChartsAxis-root": {
+                            stroke: "var(--oracle-text-secondary)",
+                          },
+                          "& .MuiChartsLegend-root": {
+                            fill: "var(--oracle-text-primary)",
+                            color: "var(--oracle-text-primary)",
+                            "& .MuiChartsLegend-mark": {
+                              fill: "var(--oracle-text-primary)",
+                            },
+                            "& .MuiChartsLegend-label": {
+                              fill: "var(--oracle-text-primary)",
+                              color: "var(--oracle-text-primary)",
+                            },
+                            "& text": {
+                              fill: "var(--oracle-text-primary)",
+                              color: "var(--oracle-text-primary)",
+                            },
+                            "& .MuiTypography-root": {
+                              color: "var(--oracle-text-primary)",
+                            },
+                          },
+                          "& .MuiChartsTooltip-root": {
+                            backgroundColor: "var(--oracle-secondary)",
+                            color: "var(--oracle-text-primary)",
+                          },
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Box
+                      style={{
+                        height: "300px",
+                        background: "var(--oracle-secondary)",
+                        borderRadius: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "1px solid var(--oracle-border)",
+                      }}
+                    >
+                      <Text
+                        size="3"
+                        style={{ color: "var(--oracle-text-muted)" }}
+                      >
+                        No trade data available
+                      </Text>
+                    </Box>
+                  )}
+                </Flex>
+              </Box>
+            </Card>
+
+            {/* Trades Table */}
+            <Card className="crypto-card">
+              <Box p="6">
+                <Heading size="5" mb="4">
+                  Recent Trades
+                </Heading>
+                {isLoadingTrades ? (
                   <Box
                     style={{
-                      height: "300px",
+                      minHeight: "200px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Spinner size="3" />
+                  </Box>
+                ) : tradesTableData.length > 0 ? (
+                  <Box
+                    style={{
+                      height: "400px",
+                      width: "100%",
+                    }}
+                  >
+                    <DataGrid
+                      rows={tradesTableData}
+                      disableColumnMenu
+                      disableColumnSelector
+                      disableRowSelectionOnClick
+                      autoHeight={false}
+                      columns={[
+                        {
+                          field: "timestamp",
+                          headerName: "Time",
+                          width: 180,
+                          minWidth: 180,
+                          sortable: true,
+                        },
+                        {
+                          field: "type",
+                          headerName: "Type",
+                          width: 80,
+                          minWidth: 80,
+                          renderCell: (params) => (
+                            <Badge
+                              color={params.value === "Buy" ? "green" : "red"}
+                              size="1"
+                            >
+                              {params.value}
+                            </Badge>
+                          ),
+                        },
+                        {
+                          field: "side",
+                          headerName: "Side",
+                          width: 80,
+                          minWidth: 80,
+                          renderCell: (params) => (
+                            <Text
+                              size="2"
+                              style={{
+                                color:
+                                  params.value === "YES"
+                                    ? "var(--oracle-bullish)"
+                                    : "var(--oracle-bearish)",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {params.value}
+                            </Text>
+                          ),
+                        },
+                        {
+                          field: "amount",
+                          headerName: "Amount",
+                          width: 100,
+                          minWidth: 100,
+                          type: "number",
+                        },
+                        {
+                          field: "cost",
+                          headerName: "Cost (USDC)",
+                          width: 120,
+                          minWidth: 120,
+                          type: "number",
+                        },
+                        {
+                          field: "probYes",
+                          headerName: "YES %",
+                          width: 100,
+                          minWidth: 100,
+                          type: "number",
+                        },
+                        {
+                          field: "probNo",
+                          headerName: "NO %",
+                          width: 100,
+                          minWidth: 100,
+                          type: "number",
+                        },
+                        {
+                          field: "totalCollateral",
+                          headerName: "Total Collateral",
+                          width: 140,
+                          minWidth: 140,
+                          type: "number",
+                        },
+                        {
+                          field: "sender",
+                          headerName: "Sender",
+                          width: 150,
+                          minWidth: 150,
+                          flex: 1,
+                          renderCell: (params) => (
+                            <Text
+                              size="1"
+                              style={{
+                                fontFamily: "monospace",
+                                color: "var(--oracle-text-secondary)",
+                              }}
+                            >
+                              {params.value.slice(0, 6)}...
+                              {params.value.slice(-4)}
+                            </Text>
+                          ),
+                        },
+                      ]}
+                      initialState={{
+                        sorting: {
+                          sortModel: [{ field: "timestamp", sort: "desc" }],
+                        },
+                      }}
+                      sx={{
+                        border: "1px solid var(--oracle-border)",
+                        borderRadius: "8px",
+                        backgroundColor: "var(--oracle-bg-card)",
+                        "& .MuiDataGrid-root": {
+                          border: "none",
+                        },
+                        "& .MuiDataGrid-main": {
+                          overflowX: "hidden",
+                        },
+                        "& .MuiDataGrid-virtualScroller": {
+                          overflowX: "hidden !important",
+                        },
+                        "& .MuiDataGrid-columnHeadersInner": {
+                          width: "100% !important",
+                        },
+                        "& .MuiDataGrid-cell": {
+                          color: "var(--oracle-text-primary)",
+                          borderColor: "var(--oracle-border)",
+                          backgroundColor: "transparent",
+                        },
+                        "& .MuiDataGrid-columnHeaders": {
+                          backgroundColor: "var(--oracle-bg-card)",
+                          background: "var(--oracle-bg-card)",
+                          color: "var(--oracle-text-primary)",
+                          borderColor: "var(--oracle-border)",
+                          borderBottom: "2px solid var(--oracle-border)",
+                          fontWeight: 600,
+                          fontSize: "0.875rem",
+                          "& .MuiDataGrid-columnHeaderTitle": {
+                            fontWeight: 600,
+                            color: "var(--oracle-text-primary)",
+                          },
+                          "& .MuiDataGrid-columnHeader": {
+                            backgroundColor: "var(--oracle-bg-card)",
+                            borderColor: "var(--oracle-border)",
+                            "&:focus": {
+                              backgroundColor: "var(--oracle-bg-card)",
+                            },
+                            "&:focus-within": {
+                              backgroundColor: "var(--oracle-bg-card)",
+                            },
+                          },
+                          "& .MuiDataGrid-iconButtonContainer": {
+                            color: "var(--oracle-text-secondary)",
+                            "& .MuiIconButton-root": {
+                              color: "var(--oracle-text-secondary)",
+                              "&:hover": {
+                                backgroundColor: "var(--oracle-input-hover-bg)",
+                                color: "var(--oracle-text-primary)",
+                              },
+                            },
+                          },
+                        },
+                        "& .MuiDataGrid-row": {
+                          width: "100% !important",
+                          backgroundColor: "transparent",
+                          "&:nth-of-type(even)": {
+                            backgroundColor: "rgba(58, 141, 255, 0.02)",
+                          },
+                          "&:hover": {
+                            backgroundColor:
+                              "var(--oracle-input-hover-bg) !important",
+                          },
+                        },
+                        "& .MuiDataGrid-footerContainer": {
+                          borderColor: "var(--oracle-border)",
+                          borderTop: "1px solid var(--oracle-border)",
+                          backgroundColor: "var(--oracle-secondary)",
+                          color: "var(--oracle-text-primary)",
+                        },
+                        "& .MuiDataGrid-toolbarContainer": {
+                          backgroundColor: "var(--oracle-secondary)",
+                          color: "var(--oracle-text-primary)",
+                        },
+                        "& .MuiDataGrid-menuIcon": {
+                          color: "var(--oracle-text-secondary)",
+                        },
+                        "& .MuiDataGrid-sortIcon": {
+                          color: "var(--oracle-text-secondary)",
+                        },
+                        "& .MuiDataGrid-selectedRowCount": {
+                          color: "var(--oracle-text-primary)",
+                        },
+                        "& .MuiTablePagination-root": {
+                          color: "var(--oracle-text-primary)",
+                        },
+                        "& .MuiTablePagination-selectLabel": {
+                          color: "var(--oracle-text-secondary)",
+                        },
+                        "& .MuiTablePagination-displayedRows": {
+                          color: "var(--oracle-text-secondary)",
+                        },
+                        "& .MuiTablePagination-select": {
+                          color: "var(--oracle-text-primary)",
+                        },
+                        "& .MuiTablePagination-actions": {
+                          "& .MuiIconButton-root": {
+                            color: "var(--oracle-text-secondary)",
+                            "&:hover": {
+                              backgroundColor: "var(--oracle-input-hover-bg)",
+                            },
+                            "&.Mui-disabled": {
+                              color: "var(--oracle-text-muted)",
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+                ) : (
+                  <Box
+                    style={{
+                      minHeight: "200px",
                       background: "var(--oracle-secondary)",
                       borderRadius: "8px",
                       display: "flex",
@@ -1104,34 +1567,10 @@ export function MarketDetailPage() {
                       size="3"
                       style={{ color: "var(--oracle-text-muted)" }}
                     >
-                      Chart Placeholder
+                      No trades yet
                     </Text>
                   </Box>
-                </Flex>
-              </Box>
-            </Card>
-
-            {/* Trades Placeholder */}
-            <Card className="crypto-card">
-              <Box p="6">
-                <Heading size="5" mb="4">
-                  Recent Trades
-                </Heading>
-                <Box
-                  style={{
-                    minHeight: "200px",
-                    background: "var(--oracle-secondary)",
-                    borderRadius: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "1px solid var(--oracle-border)",
-                  }}
-                >
-                  <Text size="3" style={{ color: "var(--oracle-text-muted)" }}>
-                    Trades Placeholder
-                  </Text>
-                </Box>
+                )}
               </Box>
             </Card>
           </Flex>
@@ -1139,7 +1578,7 @@ export function MarketDetailPage() {
           {/* Right Column - Trading Interface */}
           <Flex
             direction="column"
-            style={{ flex: "1 1 40%", minWidth: "320px" }}
+            style={{ flex: "2 1 0", minWidth: "320px", maxWidth: "100%" }}
             gap="4"
           >
             <Card className="crypto-card">
@@ -1239,7 +1678,7 @@ export function MarketDetailPage() {
                               )
                             }
                           >
-                            Yes {yesPrice}¢
+                            Yes {yesPrice.toFixed(1)}¢
                           </Button>
                           <Button
                             size="4"
@@ -1269,7 +1708,7 @@ export function MarketDetailPage() {
                               )
                             }
                           >
-                            No {noPrice}¢
+                            No {noPrice.toFixed(1)}¢
                           </Button>
                         </Flex>
 
@@ -1638,7 +2077,7 @@ export function MarketDetailPage() {
                               )
                             }
                           >
-                            Yes {yesPrice}¢
+                            Yes {yesPrice.toFixed(1)}¢
                           </Button>
                           <Button
                             size="4"
@@ -1668,7 +2107,7 @@ export function MarketDetailPage() {
                               )
                             }
                           >
-                            No {noPrice}¢
+                            No {noPrice.toFixed(1)}¢
                           </Button>
                         </Flex>
 
@@ -1751,7 +2190,7 @@ export function MarketDetailPage() {
                                       Payout:
                                     </Text>
                                     <Text size="3" weight="bold">
-                                      {formatPseudoUsdc(sellQuote)} PSEUDO_USDC
+                                      ${formatPseudoUsdc(sellQuote)}
                                     </Text>
                                   </Flex>
                                 </Flex>
@@ -2021,7 +2460,7 @@ export function MarketDetailPage() {
                       Yes Shares
                     </Text>
                     <Text size="3" weight="bold">
-                      {formatShares(totalYesShares)}
+                      {formatShares(actualYesShares)}
                     </Text>
                   </Flex>
                   <Separator />
@@ -2033,7 +2472,7 @@ export function MarketDetailPage() {
                       No Shares
                     </Text>
                     <Text size="3" weight="bold">
-                      {formatShares(totalNoShares)}
+                      {formatShares(actualNoShares)}
                     </Text>
                   </Flex>
                   <Separator />
@@ -2045,7 +2484,7 @@ export function MarketDetailPage() {
                       Total Shares
                     </Text>
                     <Text size="3" weight="bold">
-                      {formatShares(totalShares)}
+                      {formatShares(actualTotalShares)}
                     </Text>
                   </Flex>
                   <Separator />
@@ -2057,15 +2496,91 @@ export function MarketDetailPage() {
                       Collateral
                     </Text>
                     <Text size="3" weight="bold">
-                      {formatCollateral(marketData.collateral)} PSEUDO_USDC
+                      ${formatCollateral(marketData.collateral)}
                     </Text>
                   </Flex>
+                  {latestTrade && (
+                    <>
+                      <Separator />
+                      <Flex justify="between" align="center">
+                        <Text
+                          size="3"
+                          style={{ color: "var(--oracle-text-secondary)" }}
+                        >
+                          Current YES Price (Buy)
+                        </Text>
+                        <Text
+                          size="3"
+                          weight="bold"
+                          style={{ color: "var(--oracle-bullish)" }}
+                        >
+                          {buyYesPrice.toFixed(1)}¢
+                        </Text>
+                      </Flex>
+                      <Separator />
+                      <Flex justify="between" align="center">
+                        <Text
+                          size="3"
+                          style={{ color: "var(--oracle-text-secondary)" }}
+                        >
+                          Current NO Price (Buy)
+                        </Text>
+                        <Text
+                          size="3"
+                          weight="bold"
+                          style={{ color: "var(--oracle-bearish)" }}
+                        >
+                          {buyNoPrice.toFixed(1)}¢
+                        </Text>
+                      </Flex>
+                    </>
+                  )}
+                  {totalTrades > 0 && (
+                    <>
+                      <Separator />
+                      <Flex justify="between" align="center">
+                        <Text
+                          size="3"
+                          style={{ color: "var(--oracle-text-secondary)" }}
+                        >
+                          Total Trades
+                        </Text>
+                        <Text size="3" weight="bold">
+                          {totalTrades}
+                        </Text>
+                      </Flex>
+                      <Separator />
+                      <Flex justify="between" align="center">
+                        <Text
+                          size="3"
+                          style={{ color: "var(--oracle-text-secondary)" }}
+                        >
+                          Buy / Sell
+                        </Text>
+                        <Text size="3" weight="bold">
+                          {buyTrades} / {sellTrades}
+                        </Text>
+                      </Flex>
+                      <Separator />
+                      <Flex justify="between" align="center">
+                        <Text
+                          size="3"
+                          style={{ color: "var(--oracle-text-secondary)" }}
+                        >
+                          Total Volume
+                        </Text>
+                        <Text size="3" weight="bold">
+                          ${totalVolume.toFixed(2)}
+                        </Text>
+                      </Flex>
+                    </>
+                  )}
                 </Flex>
               </Box>
             </Card>
           </Flex>
         </Flex>
-      </Container>
+      </Box>
 
       {/* Position Result Dialog */}
       <Dialog.Root open={showPositionModal} onOpenChange={setShowPositionModal}>

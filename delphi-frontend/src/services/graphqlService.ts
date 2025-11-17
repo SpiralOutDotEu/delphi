@@ -77,6 +77,42 @@ export interface PositionsResponse {
     };
 }
 
+export interface TradeEvent {
+    sender: {
+        address: string;
+    };
+    timestamp: string;
+    contents: {
+        type: {
+            repr: string;
+        };
+        json: {
+            sender: string;
+            market_id: string;
+            trade_type: number; // 0 = MARKET_CREATED, 1 = BUY, 2 = SELL
+            side: number; // 0 = NONE, 1 = YES, 2 = NO
+            amount: string;
+            collateral_delta: string;
+            collateral_increase: boolean;
+            total_collateral: string;
+            cost_buy_yes: string;
+            cost_buy_no: string;
+            cost_sell_yes: string;
+            cost_sell_no: string;
+            prob_yes: string;
+            prob_no: string;
+        };
+    };
+}
+
+export interface TradesResponse {
+    data: {
+        events: {
+            nodes: TradeEvent[];
+        };
+    };
+}
+
 /**
  * Get the GraphQL URL for the current network
  */
@@ -261,5 +297,77 @@ export async function getUserPositionsForMarket(
     return allPositions.filter(
         (position) => position.asMoveObject.contents.json.market === marketId
     );
+}
+
+/**
+ * Fetch Trade events for a specific market
+ */
+export async function fetchMarketTrades(
+    network: string,
+    marketId: string,
+    delphiPackageId: string
+): Promise<TradeEvent[]> {
+    const graphqlUrl = getGraphQLUrl(network);
+    const tradeEventType = `${delphiPackageId}::delphi::Trade`;
+
+    const query = `
+    query getMarketTrades {
+      events(
+        filter: {
+          type: "${tradeEventType}"
+        }
+      ) {
+        nodes {
+          sender {
+            address
+          }
+          timestamp
+          contents {
+            type {
+              repr
+            }
+            json
+          }
+        }
+      }
+    }
+  `;
+
+    try {
+        const response = await fetch(graphqlUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`GraphQL request failed: ${response.statusText}`);
+        }
+
+        const result: TradesResponse = await response.json();
+
+        if (result.data?.events?.nodes) {
+            // Filter by market_id and sort by timestamp (oldest first)
+            const filteredTrades = result.data.events.nodes
+                .filter(
+                    (event) =>
+                        event.contents.json.market_id.toLowerCase() ===
+                        marketId.toLowerCase()
+                )
+                .sort(
+                    (a, b) =>
+                        new Date(a.timestamp).getTime() -
+                        new Date(b.timestamp).getTime()
+                );
+            return filteredTrades;
+        }
+
+        return [];
+    } catch (error) {
+        console.error("Error fetching market trades:", error);
+        throw error;
+    }
 }
 
