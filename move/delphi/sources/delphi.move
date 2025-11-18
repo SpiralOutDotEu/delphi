@@ -1,9 +1,9 @@
-/// Delphi: Prediction markets for crypto price data with LMSR AMM trading
-/// 
-/// This module provides:
-/// - Enclave-verified market creation for crypto price predictions
-/// - LMSR (Logarithmic Market Scoring Rule) automated market maker for trading
-/// - Position management and market resolution with payouts
+/// Delphi implements prediction markets for crypto price data backed by an LMSR AMM.
+///
+/// The module provides:
+/// - Enclave-verified market creation for authenticated crypto price predictions
+/// - LMSR (Logarithmic Market Scoring Rule) automated market making for trading
+/// - Position lifecycle management and settlement with deterministic payouts
 module delphi::delphi;
 
 // === Imports ===
@@ -56,8 +56,10 @@ const DEFAULT_INITIAL_VIRTUAL_PER_SIDE: u64 = 500;
 const DEFAULT_B_LIQUIDITY: u64 = 500;
 
 // === LMSR fixed-point constants (WAD = 1e12) ===
-const WAD: u128 = 1_000_000_000_000;      // 1e12 fixed point
-const LN2_WAD: u128 = 693_147_180_559;    // ln(2) * 1e12
+// WAD represents 2^64; all fixed-point values are treated as Q64.64 numbers.
+const WAD: u128 = 18_446_744_073_709_551_616;      // 2^64
+// ln(2) * 2^64 ≈ 1.2786308645202655e19
+const LN2_WAD: u128 = 12_786_308_645_202_655_232;
 
 // === Structs ===
 public struct Config has key, store {
@@ -100,7 +102,7 @@ public struct Position has key, store {
     no_shares: u64,
 }
 
-/// Should match the inner struct T used for IntentMessage<T> in Rust.
+/// Mirrors the inner struct T used for `IntentMessage<T>` in Rust to keep signatures consistent.
 public struct CryptoPricePayload has copy, drop {
     type_: u64,
     date: String,
@@ -256,8 +258,8 @@ public fun create_market<T>(
         sig,
     );
     assert!(res, EInvalidSignature);
-    // Check if the type is valid, Type 1 is for question, Type 2 is for answer
-    assert!(type_ == 1 , E_INVALID_TYPE);
+    // Only type 1 payloads (questions) are accepted for market creation.
+    assert!(type_ == 1, E_INVALID_TYPE);
     
     // Initialize market with crypto price metadata and LMSR AMM trading state
     let market = Market {
@@ -362,13 +364,13 @@ public fun resolve_market<T>(
     );
     assert!(res, EInvalidSignature);
     
-    // Check if the type is valid, Type 2 is for answer/resolution
+    // Only type 2 payloads (resolutions) are accepted when settling a market.
     assert!(type_ == 2, E_INVALID_TYPE);
     
     // Validate market state
     assert!(!market.resolved, E_MARKET_RESOLVED);
     
-    // Map result to outcome: result 1 = YES, result 2 = NO
+    // Map oracle result codes to internal outcome constants (1→YES, 2→NO).
     assert!(result == 1 || result == 2, E_INVALID_RESULT);
     let outcome = if (result == 1) { SIDE_YES } else { SIDE_NO };
 
@@ -692,8 +694,15 @@ fun quote_sell_or_zero(
 }
 
 /// Fixed-point helpers
-fun wad_mul(a: u128, b: u128): u128 { (a * b) / WAD }
-fun wad_div(a: u128, b: u128): u128 { (a * WAD) / b }
+fun wad_mul(a: u128, b: u128): u128 {     
+    // (a * b) >> 64  implemented without overflowing 128 bits
+    (a / (1 << 32) * (b / (1 << 32)))}
+/// means (a << 64) / b in Q64.64
+fun wad_div(a: u128, b: u128): u128 { 
+    // (a << 64) / b → implemented safely as ((a << 32) / b) << 32
+    let hi = (a << 32) / b;
+    hi << 32
+    }
 
 /// exp(+r) on r in [0, ln 2] using positive Taylor, then invert to get exp(-r)
 /// exp(r) ≈ 1 + r + r^2/2 + r^3/6 + r^4/24
@@ -750,32 +759,41 @@ fun softmax_pair(x_wad: u128, y_wad: u128): (u128, u128) {
 }
 
 /// LMSR cost in PSEUDO_USDC (integer, deterministic).
-/// C = b * ln( exp(Qy/b) + exp(Qn/b) )
-/// Using: ln(e^x + e^y) = a + ln(1 + e^{-(a - b)}), a = max(x,y)
+/// C(q) = b * ln( exp(Qy/b) + exp(Qn/b) )
+/// Using: ln(e^x + e^y) = a + ln(1 + e^{-|x - y|}), where a = max(x, y)
 fun lmsr_cost_fp(q_yes: u64, q_no: u64, b: u64): u64 {
     let b_u128: u128 = b as u128;
     let qy: u128 = q_yes as u128;
     let qn: u128 = q_no  as u128;
 
-    let x_wad: u128 = wad_div(qy, b_u128);   // Qy/b in WAD
-    let y_wad: u128 = wad_div(qn, b_u128);   // Qn/b in WAD
+    // x = Q_yes / b, y = Q_no / b, both in Q64.64
+    let x_wad: u128 = wad_div(qy, b_u128);   // Qy/b in Q64.64
+    let y_wad: u128 = wad_div(qn, b_u128);   // Qn/b in Q64.64
 
+    // a = max(x, y), t = |x - y|
     let a_wad: u128 = if (x_wad >= y_wad) { x_wad } else { y_wad };
-    let diff_wad: u128 = if (x_wad >= y_wad) { x_wad - y_wad } else { y_wad - x_wad };
+    let diff_wad: u128 = if (x_wad >= y_wad) {
+        x_wad - y_wad
+    } else {
+        y_wad - x_wad
+    };
 
-    let e_neg = exp_neg_fp(diff_wad);        // e^{-(a-b)} in WAD
-    let ln1p  = ln1p_fp(e_neg);              // ln(1 + e^{-t}) in WAD
+    // ln(e^x + e^y) = a + ln(1 + e^{-t})
+    let e_neg: u128 = exp_neg_fp(diff_wad);  // e^{-t} in Q64.64
+    let ln1p: u128  = ln1p_fp(e_neg);        // ln(1 + e^{-t}) in Q64.64
 
-    let sum_wad: u128 = a_wad + ln1p;        // still WAD
+    let sum_wad: u128 = a_wad + ln1p;        // still Q64.64, ~ ln(e^x + e^y)
 
-    // FIX: Use wad_mul to maintain precision
-    let c_wad: u128 = wad_mul(b_u128 * WAD, sum_wad); // b * sum in WAD
+    // C_fp = b * ln(...)  (still Q64.64)
+    let c_wad: u128 = b_u128 * sum_wad;
 
-    // Convert to PSEUDO_USDC: multiply by PRICE_SCALE_MIST, divide by WAD
+    // Convert from Q64.64 to integer PSEUDO_USDC units by:
+    //   cost = C_fp * PRICE_SCALE_MIST / 2^64
     let c_mist: u128 = (c_wad * (PRICE_SCALE_MIST as u128)) / WAD;
 
     c_mist as u64
 }
+
 
 // === Test Helpers ===
 #[test_only]
@@ -819,4 +837,55 @@ public fun get_config_fields(
         config.initial_virtual_per_side,
         config.b_liquidity,
     )
+}
+
+#[test_only]
+public fun create_test_market(
+    config: &Config,
+    ctx: &mut TxContext,
+): Market {
+    Market {
+        id: object::new(ctx),
+        type_: 1,
+        date: b"01-01-2025".to_string(),
+        coin: b"bitcoin".to_string(),
+        comparator: 2,
+        price: 50000,
+        result: 0,
+        timestamp_ms: 1000000,
+        virtual_yes_shares: config.initial_virtual_per_side,
+        virtual_no_shares: config.initial_virtual_per_side,
+        yes_shares: 0,
+        no_shares: 0,
+        collateral: balance::zero<PSEUDO_USDC>(),
+        b: config.b_liquidity,
+        resolved: false,
+        outcome: 0,
+        payout_per_share: 0,
+    }
+}
+
+#[test_only]
+public fun set_market_yes_shares(market: &mut Market, shares: u64) {
+    market.yes_shares = shares;
+}
+
+#[test_only]
+public fun set_market_no_shares(market: &mut Market, shares: u64) {
+    market.no_shares = shares;
+}
+
+#[test_only]
+public fun set_market_resolved(market: &mut Market, resolved: bool) {
+    market.resolved = resolved;
+}
+
+#[test_only]
+public fun delete_test_market(market: Market, ctx: &mut TxContext) {
+    let Market { id, type_: _, date: _, coin: _, comparator: _, price: _, result: _, timestamp_ms: _, yes_shares: _, no_shares: _, virtual_yes_shares: _, virtual_no_shares: _, b: _, collateral, resolved: _, outcome: _, payout_per_share: _ } = market;
+    // Convert balance to coin and transfer it to sender (consumes the coin)
+    // Test scenarios expect markets to hold zero collateral unless explicitly funded.
+    let test_coin = coin::from_balance(collateral, ctx);
+    transfer::public_transfer(test_coin, tx_context::sender(ctx));
+    object::delete(id);
 }
