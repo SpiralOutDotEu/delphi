@@ -84,7 +84,7 @@ export function Landing() {
               asChild
             >
               <Link
-                to="/objects"
+                to="/explore"
                 style={{ textDecoration: "none", color: "inherit" }}
               >
                 Explore Markets
@@ -139,54 +139,66 @@ export function Landing() {
               }}
             >
               {/* Crypto - Available */}
-              <Box className="market-card market-card-available">
-                <Flex direction="column" align="center" gap="3" p="4">
-                  <Box
-                    className="market-icon market-icon-available"
-                    style={{
-                      width: "clamp(48px, 10vw, 64px)",
-                      height: "clamp(48px, 10vw, 64px)",
-                      borderRadius: "16px",
-                      background:
-                        "linear-gradient(135deg, var(--oracle-primary) 0%, var(--oracle-glow) 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      boxShadow: "0 4px 16px var(--oracle-primary-glow)",
-                    }}
-                  >
-                    <CubeIcon
-                      width="clamp(24px, 5vw, 32px)"
-                      height="clamp(24px, 5vw, 32px)"
-                      color="white"
-                    />
-                  </Box>
-                  <Heading
-                    size={{ initial: "4", sm: "5" }}
-                    className="text-gradient"
-                  >
-                    Crypto
-                  </Heading>
-                  <Flex align="center" gap="2">
-                  <Box
-                    style={{
-                      background: "var(--oracle-bullish)",
-                      borderRadius: "12px",
-                      padding: "4px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      boxShadow: "0 2px 8px rgba(79, 188, 128, 0.3)",
-                    }}
-                  >
-                    <CheckIcon width="14" height="14" color="white" />
-                    <Text size="2" weight="bold" style={{ color: "white" }}>
-                      Available
-                    </Text>
-                  </Box>
+              <Link
+                to="/explore"
+                style={{
+                  textDecoration: "none",
+                  color: "inherit",
+                  display: "block",
+                }}
+              >
+                <Box
+                  className="market-card market-card-available"
+                  style={{ cursor: "pointer" }}
+                >
+                  <Flex direction="column" align="center" gap="3" p="4">
+                    <Box
+                      className="market-icon market-icon-available"
+                      style={{
+                        width: "clamp(48px, 10vw, 64px)",
+                        height: "clamp(48px, 10vw, 64px)",
+                        borderRadius: "16px",
+                        background:
+                          "linear-gradient(135deg, var(--oracle-primary) 0%, var(--oracle-glow) 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 4px 16px var(--oracle-primary-glow)",
+                      }}
+                    >
+                      <CubeIcon
+                        width="clamp(24px, 5vw, 32px)"
+                        height="clamp(24px, 5vw, 32px)"
+                        color="white"
+                      />
+                    </Box>
+                    <Heading
+                      size={{ initial: "4", sm: "5" }}
+                      className="text-gradient"
+                    >
+                      Crypto
+                    </Heading>
+                    <Flex align="center" gap="2">
+                      <Box
+                        style={{
+                          background: "var(--oracle-bullish)",
+                          borderRadius: "12px",
+                          padding: "4px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          boxShadow: "0 2px 8px rgba(79, 188, 128, 0.3)",
+                        }}
+                      >
+                        <CheckIcon width="14" height="14" color="white" />
+                        <Text size="2" weight="bold" style={{ color: "white" }}>
+                          Available
+                        </Text>
+                      </Box>
+                    </Flex>
                   </Flex>
-                </Flex>
-              </Box>
+                </Box>
+              </Link>
 
               {/* Stocks - Coming Soon */}
               <Box className="market-card market-card-coming-soon">
