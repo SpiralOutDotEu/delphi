@@ -17,6 +17,7 @@ import {
 } from "@radix-ui/themes";
 import { Alert, Snackbar } from "@mui/material";
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { networkConfig } from "../networkConfig";
 import {
   COINS,
@@ -43,6 +44,7 @@ interface ApiResponse {
 }
 
 export function CreateMarketPage() {
+  const navigate = useNavigate();
   const account = useCurrentAccount();
   const client = useSuiClient();
   const { mutateAsync: signTransaction } = useSignTransaction();
@@ -249,19 +251,31 @@ export function CreateMarketPage() {
       );
 
       if (createdMarket && "objectId" in createdMarket) {
+        const marketId = createdMarket.objectId;
         showAlert(
-          `Market created successfully! ID: ${createdMarket.objectId}`,
+          `Market created successfully! Redirecting to market...`,
           "success",
         );
+        // Reset form
+        setCoin("");
+        setComparator("");
+        setPrice("");
+        setDate("");
+        setApiResponse(null);
+        setIsLoading(false);
+        // Redirect to market detail page after a short delay
+        setTimeout(() => {
+          navigate(`/market/${marketId}`);
+        }, 1500);
       } else {
         showAlert("Transaction completed successfully!", "success");
+        setCoin("");
+        setComparator("");
+        setPrice("");
+        setDate("");
+        setApiResponse(null);
+        setIsLoading(false);
       }
-      setCoin("");
-      setComparator("");
-      setPrice("");
-      setDate("");
-      setApiResponse(null);
-      setIsLoading(false);
     } catch (error: any) {
       const errorMessage =
         error.message ||
