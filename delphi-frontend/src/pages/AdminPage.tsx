@@ -15,6 +15,7 @@ import {
   Card,
   Badge,
 } from "@radix-ui/themes";
+import { Alert, Snackbar } from "@mui/material";
 import { useState, useEffect } from "react";
 import { networkConfig } from "../networkConfig";
 
@@ -51,6 +52,15 @@ export function AdminPage() {
   );
   const [sharedEnclaves, setSharedEnclaves] = useState<any[]>([]);
   const [loadingEnclaves, setLoadingEnclaves] = useState(false);
+  const [alertState, setAlertState] = useState<{
+    open: boolean;
+    message: string;
+    severity: "error" | "warning" | "info" | "success";
+  }>({
+    open: false,
+    message: "",
+    severity: "error",
+  });
 
   // Function to fetch shared enclaves from events
   const fetchSharedEnclaves = async () => {
@@ -135,17 +145,22 @@ export function AdminPage() {
     fetchSharedEnclaves();
   }, [enclavePackageId]);
 
+  const showAlert = (message: string, severity: "error" | "warning" | "info" | "success" = "error") => {
+    setAlertState({ open: true, message, severity });
+  };
+
   const handleCreateEnclave = async () => {
     if (!account || !enclavePackageId || enclavePackageId === "0x0") {
-      alert(
+      showAlert(
         "Enclave package not found. Please set enclavePackageId in networkConfig.ts",
+        "error",
       );
       return;
     }
 
     const pkHex = publicKey.replace(/^0x/, "").trim();
     if (pkHex.length !== 64) {
-      alert("Public key must be 64 hex characters (32 bytes)");
+      showAlert("Public key must be 64 hex characters (32 bytes)", "warning");
       return;
     }
 
@@ -185,8 +200,9 @@ export function AdminPage() {
       );
 
       if (createdObject && "objectId" in createdObject) {
-        alert(
+        showAlert(
           `Enclave created successfully! Object ID: ${createdObject.objectId}`,
+          "success",
         );
         setPublicKey("");
         // Refetch shared enclaves
@@ -196,14 +212,14 @@ export function AdminPage() {
       setIsLoading(false);
     } catch (error: any) {
       console.error("Error:", error);
-      alert(`Error: ${error.message}`);
+      showAlert(`Error: ${error.message}`, "error");
       setIsLoading(false);
     }
   };
 
   const handleVerifySignature = async () => {
     if (!account || !enclaveObjectId || !signature || !payloadJson) {
-      alert("Please fill in all required fields");
+      showAlert("Please fill in all required fields", "warning");
       return;
     }
 
@@ -215,14 +231,14 @@ export function AdminPage() {
       try {
         payload = JSON.parse(payloadJson);
       } catch (e) {
-        alert("Invalid JSON payload");
+        showAlert("Invalid JSON payload", "error");
         setIsLoading(false);
         return;
       }
 
       const sigHex = signature.replace(/^0x/, "").trim();
       if (sigHex.length % 2 !== 0) {
-        alert("Invalid signature hex string");
+        showAlert("Invalid signature hex string", "error");
         setIsLoading(false);
         return;
       }
@@ -264,17 +280,17 @@ export function AdminPage() {
           setVerificationResult(isValid);
         } else {
           setVerificationResult(false);
-          alert("Could not extract return value from transaction");
+          showAlert("Could not extract return value from transaction", "error");
         }
       } else {
         setVerificationResult(false);
-        alert("Transaction execution failed or returned no results");
+        showAlert("Transaction execution failed or returned no results", "error");
       }
 
       setIsLoading(false);
     } catch (error: any) {
       console.error("Error:", error);
-      alert(`Error: ${error.message || "Unknown error occurred"}`);
+      showAlert(`Error: ${error.message || "Unknown error occurred"}`, "error");
       setVerificationResult(false);
       setIsLoading(false);
     }
@@ -622,6 +638,43 @@ export function AdminPage() {
         </Card>
       </Flex>
       </Container>
+
+      <Snackbar
+        open={alertState.open}
+        autoHideDuration={6000}
+        onClose={() => setAlertState({ ...alertState, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{
+          top: "160px !important",
+          "& .MuiSnackbar-root": {
+            zIndex: "2000 !important",
+          },
+          "& .MuiSnackbarContent-root": {
+            minWidth: "400px",
+          },
+        }}
+      >
+        <Alert
+          onClose={() => setAlertState({ ...alertState, open: false })}
+          severity={alertState.severity}
+          sx={{
+            width: "100%",
+            fontSize: "18px",
+            padding: "20px 24px",
+            "& .MuiAlert-icon": {
+              fontSize: "28px",
+              marginRight: "16px",
+            },
+            "& .MuiAlert-message": {
+              fontSize: "18px",
+              fontWeight: 500,
+              lineHeight: 1.5,
+            },
+          }}
+        >
+          {alertState.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

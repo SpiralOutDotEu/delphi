@@ -19,12 +19,12 @@ import {
   Tabs,
   Spinner,
   Separator,
-  Dialog,
   Select,
   TextField,
 } from "@radix-ui/themes";
 import { LineChart } from "@mui/x-charts/LineChart";
 import { DataGrid } from "@mui/x-data-grid";
+import { Alert, Snackbar } from "@mui/material";
 import { useEffect, useState } from "react";
 import { networkConfig } from "../networkConfig";
 import {
@@ -49,12 +49,6 @@ export function MarketDetailPage() {
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
   const [selectedSide, setSelectedSide] = useState<"yes" | "no" | null>("yes");
   const [isOpeningPosition, setIsOpeningPosition] = useState(false);
-  const [positionResult, setPositionResult] = useState<{
-    success: boolean;
-    message: string;
-    positionId?: string;
-  } | null>(null);
-  const [showPositionModal, setShowPositionModal] = useState(false);
   const [userPositions, setUserPositions] = useState<Position[]>([]);
   const [selectedPositionId, setSelectedPositionId] = useState<string | null>(
     null,
@@ -70,6 +64,15 @@ export function MarketDetailPage() {
   const [isSellingShares, setIsSellingShares] = useState(false);
   const [tradeEvents, setTradeEvents] = useState<TradeEvent[]>([]);
   const [isLoadingTrades, setIsLoadingTrades] = useState(false);
+  const [alertState, setAlertState] = useState<{
+    open: boolean;
+    message: string;
+    severity: "error" | "warning" | "info" | "success";
+  }>({
+    open: false,
+    message: "",
+    severity: "error",
+  });
 
   const getCurrentNetwork = () => {
     const url = (client as any).url || "";
@@ -109,26 +112,30 @@ export function MarketDetailPage() {
       },
     );
 
+  const showAlert = (message: string, severity: "error" | "warning" | "info" | "success" = "error") => {
+    setAlertState({ open: true, message, severity });
+  };
+
   const handleOpenPosition = async () => {
     if (!account || !market) {
-      alert("Please connect your wallet");
+      showAlert("Please connect your wallet", "warning");
       return;
     }
 
     if (!delphiPackageId || delphiPackageId === "0x0") {
-      alert(
+      showAlert(
         "Delphi package not found. Please set delphiPackageId in networkConfig.ts",
+        "error",
       );
       return;
     }
 
     if (!marketId) {
-      alert("Market ID is required");
+      showAlert("Market ID is required", "error");
       return;
     }
 
     setIsOpeningPosition(true);
-    setPositionResult(null);
 
     try {
       const tx = new Transaction();
@@ -164,19 +171,13 @@ export function MarketDetailPage() {
       );
 
       if (createdPosition && "objectId" in createdPosition) {
-        setPositionResult({
-          success: true,
-          message: "Position opened successfully!",
-          positionId: createdPosition.objectId,
-        });
+        showAlert(
+          `Position opened successfully! ID: ${createdPosition.objectId}`,
+          "success",
+        );
       } else {
-        setPositionResult({
-          success: true,
-          message: "Transaction completed successfully!",
-        });
+        showAlert("Transaction completed successfully!", "success");
       }
-
-      setShowPositionModal(true);
       setIsOpeningPosition(false);
 
       // Start waiting for new position and reload positions with retry
@@ -191,11 +192,7 @@ export function MarketDetailPage() {
         error.data?.message ||
         (typeof error === "string" ? error : "Failed to open position");
 
-      setPositionResult({
-        success: false,
-        message: errorMessage,
-      });
-      setShowPositionModal(true);
+      showAlert(errorMessage, "error");
       setIsOpeningPosition(false);
     }
   };
@@ -540,33 +537,33 @@ export function MarketDetailPage() {
   // Function to buy shares
   const handleBuyShares = async () => {
     if (!account || !market || !selectedSide || !buyAmount) {
-      alert("Please select a side and enter an amount");
+      showAlert("Please select a side and enter an amount", "warning");
       return;
     }
 
     if (!delphiPackageId || delphiPackageId === "0x0") {
-      alert("Delphi package not found");
+      showAlert("Delphi package not found", "error");
       return;
     }
 
     if (!delphiConfigObjectId || delphiConfigObjectId === "0x0") {
-      alert("Config object not found");
+      showAlert("Config object not found", "error");
       return;
     }
 
     if (!selectedPositionId) {
-      alert("Please open a position first");
+      showAlert("Please open a position first", "warning");
       return;
     }
 
     if (!quote || quote === 0n) {
-      alert("Please wait for quote to load");
+      showAlert("Please wait for quote to load", "warning");
       return;
     }
 
     const amountNum = parseFloat(buyAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      alert("Please enter a valid amount");
+      showAlert("Please enter a valid amount", "warning");
       return;
     }
 
@@ -577,7 +574,7 @@ export function MarketDetailPage() {
     // Get PSEUDO_USDC coins
     const coins = pseudoUsdcCoinsData?.data || [];
     if (coins.length === 0) {
-      alert("You don't have any PSEUDO_USDC. Please get some from the faucet.");
+      showAlert("You don't have any PSEUDO_USDC. Please get some from the faucet.", "warning");
       return;
     }
 
@@ -587,8 +584,9 @@ export function MarketDetailPage() {
     }, BigInt(0));
 
     if (totalBalance < quote) {
-      alert(
+      showAlert(
         `Insufficient balance. You need ${formatPseudoUsdc(quote)} PSEUDO_USDC but have ${formatPseudoUsdc(totalBalance)}`,
+        "error",
       );
       return;
     }
@@ -682,7 +680,7 @@ export function MarketDetailPage() {
         // Transfer updated position back to user
         tx.transferObjects([updatedPosition], account.address);
       } else {
-        alert("Insufficient balance");
+        showAlert("Insufficient balance", "error");
         setIsBuyingShares(false);
         return;
       }
@@ -727,11 +725,7 @@ export function MarketDetailPage() {
         loadTrades();
       }, 2000); // Wait 2 seconds for transaction to be indexed
 
-      setPositionResult({
-        success: true,
-        message: "Shares bought successfully!",
-      });
-      setShowPositionModal(true);
+      showAlert("Shares bought successfully!", "success");
       setIsBuyingShares(false);
     } catch (error: any) {
       console.error("Error buying shares:", error);
@@ -740,11 +734,7 @@ export function MarketDetailPage() {
         error.data?.message ||
         (typeof error === "string" ? error : "Failed to buy shares");
 
-      setPositionResult({
-        success: false,
-        message: errorMessage,
-      });
-      setShowPositionModal(true);
+      showAlert(errorMessage, "error");
       setIsBuyingShares(false);
     }
   };
@@ -752,33 +742,33 @@ export function MarketDetailPage() {
   // Function to sell shares
   const handleSellShares = async () => {
     if (!account || !market || !selectedSide || !sellAmount) {
-      alert("Please select a side and enter an amount");
+      showAlert("Please select a side and enter an amount", "warning");
       return;
     }
 
     if (!delphiPackageId || delphiPackageId === "0x0") {
-      alert("Delphi package not found");
+      showAlert("Delphi package not found", "error");
       return;
     }
 
     if (!delphiConfigObjectId || delphiConfigObjectId === "0x0") {
-      alert("Config object not found");
+      showAlert("Config object not found", "error");
       return;
     }
 
     if (!selectedPositionId) {
-      alert("Please open a position first");
+      showAlert("Please open a position first", "warning");
       return;
     }
 
     if (!sellQuote || sellQuote === 0n) {
-      alert("Please wait for quote to load");
+      showAlert("Please wait for quote to load", "warning");
       return;
     }
 
     const amountNum = parseFloat(sellAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      alert("Please enter a valid amount");
+      showAlert("Please enter a valid amount", "warning");
       return;
     }
 
@@ -791,7 +781,7 @@ export function MarketDetailPage() {
       (p) => p.address === selectedPositionId,
     );
     if (!selectedPosition) {
-      alert("Position not found");
+      showAlert("Position not found", "error");
       return;
     }
 
@@ -801,8 +791,9 @@ export function MarketDetailPage() {
         : BigInt(selectedPosition.asMoveObject.contents.json.no_shares || "0");
 
     if (availableShares < amountInShares) {
-      alert(
+      showAlert(
         `Insufficient shares. You have ${availableShares.toString()} ${selectedSide === "yes" ? "yes" : "no"} shares but trying to sell ${amountInShares.toString()}`,
+        "error",
       );
       return;
     }
@@ -867,11 +858,7 @@ export function MarketDetailPage() {
         loadTrades();
       }, 2000); // Wait 2 seconds for transaction to be indexed
 
-      setPositionResult({
-        success: true,
-        message: "Shares sold successfully!",
-      });
-      setShowPositionModal(true);
+      showAlert("Shares sold successfully!", "success");
       setIsSellingShares(false);
     } catch (error: any) {
       console.error("Error selling shares:", error);
@@ -880,11 +867,7 @@ export function MarketDetailPage() {
         error.data?.message ||
         (typeof error === "string" ? error : "Failed to sell shares");
 
-      setPositionResult({
-        success: false,
-        message: errorMessage,
-      });
-      setShowPositionModal(true);
+      showAlert(errorMessage, "error");
       setIsSellingShares(false);
     }
   };
@@ -2592,46 +2575,42 @@ export function MarketDetailPage() {
         </Flex>
       </Box>
 
-      {/* Position Result Dialog */}
-      <Dialog.Root open={showPositionModal} onOpenChange={setShowPositionModal}>
-        <Dialog.Content style={{ maxWidth: 500 }}>
-          <Dialog.Title>
-            {positionResult?.success ? "Success" : "Error"}
-          </Dialog.Title>
-          <Dialog.Description size="2" mb="4">
-            {positionResult?.message}
-            {positionResult?.positionId && (
-              <Box mt="3">
-                <Text
-                  size="2"
-                  weight="bold"
-                  mb="1"
-                  style={{ display: "block" }}
-                >
-                  Position ID:
-                </Text>
-                <Text
-                  size="1"
-                  style={{
-                    fontFamily: "monospace",
-                    wordBreak: "break-all",
-                    color: "var(--oracle-text-secondary)",
-                  }}
-                >
-                  {positionResult.positionId}
-                </Text>
-              </Box>
-            )}
-          </Dialog.Description>
-          <Flex gap="3" justify="end">
-            <Dialog.Close>
-              <Button variant="soft" color="gray">
-                Close
-              </Button>
-            </Dialog.Close>
-          </Flex>
-        </Dialog.Content>
-      </Dialog.Root>
+      <Snackbar
+        open={alertState.open}
+        autoHideDuration={6000}
+        onClose={() => setAlertState({ ...alertState, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{
+          top: "160px !important",
+          "& .MuiSnackbar-root": {
+            zIndex: "2000 !important",
+          },
+          "& .MuiSnackbarContent-root": {
+            minWidth: "400px",
+          },
+        }}
+      >
+        <Alert
+          onClose={() => setAlertState({ ...alertState, open: false })}
+          severity={alertState.severity}
+          sx={{
+            width: "100%",
+            fontSize: "18px",
+            padding: "20px 24px",
+            "& .MuiAlert-icon": {
+              fontSize: "28px",
+              marginRight: "16px",
+            },
+            "& .MuiAlert-message": {
+              fontSize: "18px",
+              fontWeight: 500,
+              lineHeight: 1.5,
+            },
+          }}
+        >
+          {alertState.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

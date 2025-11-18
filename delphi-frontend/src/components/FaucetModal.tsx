@@ -14,6 +14,7 @@ import {
   Box,
   Separator,
 } from "@radix-ui/themes";
+import { Alert, Snackbar } from "@mui/material";
 import { useState, useEffect } from "react";
 import { networkConfig } from "../networkConfig";
 
@@ -30,6 +31,15 @@ export function FaucetModal({
   const client = useSuiClient();
   const { mutateAsync: signTransaction } = useSignTransaction();
   const [isLoading, setIsLoading] = useState(false);
+  const [alertState, setAlertState] = useState<{
+    open: boolean;
+    message: string;
+    severity: "error" | "warning" | "info" | "success";
+  }>({
+    open: false,
+    message: "",
+    severity: "error",
+  });
 
   // Get current network to construct coin type
   const getCurrentNetwork = () => {
@@ -42,7 +52,7 @@ export function FaucetModal({
   };
 
   const currentNetwork = getCurrentNetwork();
-  
+
   // Get network config values (same pattern as CreateMarketPage)
   const pseudoUsdcPackageId =
     (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
@@ -50,7 +60,7 @@ export function FaucetModal({
   const pseudoUsdcFaucetObjectId =
     (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
       ?.pseudoUsdcFaucetObjectId || "0x0";
-  
+
   const coinType =
     pseudoUsdcPackageId && pseudoUsdcPackageId !== "0x0"
       ? `${pseudoUsdcPackageId}::pseudo_usdc::PSEUDO_USDC`
@@ -122,17 +132,30 @@ export function FaucetModal({
     window.open("https://faucet.sui.io", "_blank");
   };
 
+  const showAlert = (
+    message: string,
+    severity: "error" | "warning" | "info" | "success" = "error",
+  ) => {
+    setAlertState({ open: true, message, severity });
+  };
+
   const handleGetPseudoUsdc = async () => {
-    if (!account || !pseudoUsdcFaucetObjectId || pseudoUsdcFaucetObjectId === "0x0") {
-      alert(
+    if (
+      !account ||
+      !pseudoUsdcFaucetObjectId ||
+      pseudoUsdcFaucetObjectId === "0x0"
+    ) {
+      showAlert(
         "Faucet object not found. Please set pseudoUsdcFaucetObjectId in networkConfig.ts",
+        "error",
       );
       return;
     }
 
     if (!pseudoUsdcPackageId || pseudoUsdcPackageId === "0x0") {
-      alert(
+      showAlert(
         "Package ID not found. Please set pseudoUsdcPackageId in networkConfig.ts",
+        "error",
       );
       return;
     }
@@ -159,10 +182,11 @@ export function FaucetModal({
       });
 
       refetchPseudoUsdc();
+      showAlert("Successfully dispensed 100 PSEUDO_USDC!", "success");
       setIsLoading(false);
     } catch (error: any) {
       console.error("Error:", error);
-      alert(`Error: ${error.message}`);
+      showAlert(`Error: ${error.message}`, "error");
       setIsLoading(false);
     }
   };
@@ -271,7 +295,43 @@ export function FaucetModal({
           </Dialog.Close>
         </Flex>
       </Dialog.Content>
+
+      <Snackbar
+        open={alertState.open}
+        autoHideDuration={6000}
+        onClose={() => setAlertState({ ...alertState, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{
+          top: "160px !important",
+          "& .MuiSnackbar-root": {
+            zIndex: "2000 !important",
+          },
+          "& .MuiSnackbarContent-root": {
+            minWidth: "400px",
+          },
+        }}
+      >
+        <Alert
+          onClose={() => setAlertState({ ...alertState, open: false })}
+          severity={alertState.severity}
+          sx={{
+            width: "100%",
+            fontSize: "18px",
+            padding: "20px 24px",
+            "& .MuiAlert-icon": {
+              fontSize: "28px",
+              marginRight: "16px",
+            },
+            "& .MuiAlert-message": {
+              fontSize: "18px",
+              fontWeight: 500,
+              lineHeight: 1.5,
+            },
+          }}
+        >
+          {alertState.message}
+        </Alert>
+      </Snackbar>
     </Dialog.Root>
   );
 }
-
