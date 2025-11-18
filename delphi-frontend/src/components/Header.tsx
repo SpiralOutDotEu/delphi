@@ -57,7 +57,7 @@ export function Header() {
         </Link>
         <Link asChild>
           <RouterLink
-            to="/objects"
+            to="/positions"
             style={{
               textDecoration: "none",
               color: "var(--oracle-text-secondary)",
@@ -67,8 +67,8 @@ export function Header() {
             }}
             className="nav-link"
           >
-            <Box display={{ initial: "none", sm: "block" }}>My Objects</Box>
-            <Box display={{ initial: "block", sm: "none" }}>Objects</Box>
+            <Box display={{ initial: "none", sm: "block" }}>My Positions</Box>
+            <Box display={{ initial: "block", sm: "none" }}>Positions</Box>
           </RouterLink>
         </Link>
         <Link asChild>

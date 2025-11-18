@@ -1582,6 +1582,7 @@ export function MarketDetailPage() {
                           width: 180,
                           minWidth: 180,
                           sortable: true,
+                          flex: 1,
                         },
                         {
                           field: "type",

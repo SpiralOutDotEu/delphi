@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Header } from "./components/Header";
 import { Landing } from "./pages/Landing";
-import { OwnedObjectsPage } from "./pages/OwnedObjectsPage";
+import { MyPositionsPage } from "./pages/MyPositionsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { CreateMarketPage } from "./pages/CreateMarketPage";
 import { ExplorePage } from "./pages/ExplorePage";
@@ -14,7 +14,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/explore" element={<ExplorePage />} />
-        <Route path="/objects" element={<OwnedObjectsPage />} />
+        <Route path="/positions" element={<MyPositionsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/create-market" element={<CreateMarketPage />} />
         <Route path="/market/:marketId" element={<MarketDetailPage />} />

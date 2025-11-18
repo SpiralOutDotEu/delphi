@@ -113,6 +113,33 @@ export interface TradesResponse {
     };
 }
 
+export interface PositionClosedEvent {
+    sender: {
+        address: string;
+    };
+    timestamp: string;
+    contents: {
+        type: {
+            repr: string;
+        };
+        json: {
+            sender: string;
+            market_id: string;
+            position_id: string;
+            winning_shares: string;
+            total_payout: string;
+        };
+    };
+}
+
+export interface PositionClosedResponse {
+    data: {
+        events: {
+            nodes: PositionClosedEvent[];
+        };
+    };
+}
+
 /**
  * Get the GraphQL URL for the current network
  */
@@ -368,6 +395,88 @@ export async function fetchMarketTrades(
         return [];
     } catch (error) {
         console.error("Error fetching market trades:", error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch PositionClosed events for a specific user
+ */
+export async function getUserClosedPositions(
+    network: string,
+    owner: string,
+    delphiPackageId: string
+): Promise<PositionClosedEvent[]> {
+    const graphqlUrl = getGraphQLUrl(network);
+    const positionClosedEventType = `${delphiPackageId}::delphi::PositionClosed`;
+
+    const query = `
+    query GetUserClosedPositions {
+      serviceConfig {
+        maxPageSize(type: "Query", field: "events")
+      }
+      events(
+        last: 50,
+        filter: {
+          type: "${positionClosedEventType}"
+        }
+      ) {
+        nodes {
+          sender {
+            address
+          }
+          timestamp
+          contents {
+            type {
+              repr
+            }
+            json
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+      }
+    }
+  `;
+
+    try {
+        const response = await fetch(graphqlUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`GraphQL request failed: ${response.statusText}`);
+        }
+
+        const result: PositionClosedResponse = await response.json();
+
+        if (result.data?.events?.nodes) {
+            // Filter by sender address and sort by timestamp (newest first)
+            const ownerLower = owner.toLowerCase();
+            return result.data.events.nodes
+                .filter(
+                    (event) =>
+                        event.sender.address.toLowerCase() === ownerLower ||
+                        event.contents.json.sender?.toLowerCase() === ownerLower
+                )
+                .sort(
+                    (a, b) =>
+                        new Date(b.timestamp).getTime() -
+                        new Date(a.timestamp).getTime()
+                );
+        }
+
+        return [];
+    } catch (error) {
+        console.error("Error fetching closed positions:", error);
         throw error;
     }
 }
