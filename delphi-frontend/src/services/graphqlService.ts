@@ -313,6 +313,7 @@ export async function fetchMarketTrades(
     const query = `
     query getMarketTrades {
       events(
+        last: 50,
         filter: {
           type: "${tradeEventType}"
         }
