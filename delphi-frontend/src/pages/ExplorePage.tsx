@@ -70,9 +70,15 @@ export function ExplorePage() {
   return (
     <Box className="page-container">
       <Container
-        size="3"
+        size="4"
         py="8"
-        style={{ maxWidth: "1400px", margin: "0 auto" }}
+        px={{ initial: "4", sm: "5", md: "6", lg: "8" }}
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+          margin: "0 auto",
+        }}
+        className="explore-container"
       >
         <Box mb="8" style={{ textAlign: "center" }}>
           <Heading
@@ -137,7 +143,10 @@ export function ExplorePage() {
             </Box>
           </Card>
         ) : (
-          <Grid columns={{ initial: "1", sm: "1", md: "2", lg: "2" }} gap="4">
+          <Grid
+            columns={{ initial: "1", sm: "1", md: "2", lg: "2", xl: "3" }}
+            gap="4"
+          >
             {markets.map((market) => (
               <MarketCard key={market.address} market={market} />
             ))}

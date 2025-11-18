@@ -674,3 +674,16 @@ html {
     transform: rotate(360deg);
   }
 }
+
+/* Explore page container - full width on normal screens, 80% on extra large */
+.explore-container {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (min-width: 1536px) {
+  .explore-container {
+    width: 80% !important;
+    max-width: 80% !important;
+  }
+}
