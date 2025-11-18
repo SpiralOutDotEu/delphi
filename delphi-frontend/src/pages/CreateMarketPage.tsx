@@ -1,9 +1,4 @@
-import {
-  useCurrentAccount,
-  useSignTransaction,
-  useSuiClient,
-} from "@mysten/dapp-kit";
-import { Transaction } from "@mysten/sui/transactions";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import {
   Container,
   Flex,
@@ -17,68 +12,17 @@ import {
 } from "@radix-ui/themes";
 import { Alert, Snackbar } from "@mui/material";
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { networkConfig } from "../networkConfig";
-import {
-  COINS,
-  COMPARATORS,
-  API_ENDPOINT,
-  MARKET_TYPE,
-  MARKET_RESULT,
-} from "../constants";
-
-interface ApiResponse {
-  intent_scope: number;
-  timestamp_ms: string;
-  payload: {
-    type: number;
-    date: string;
-    coin: string;
-    comparator: number;
-    price: string;
-    result: number;
-  };
-  signature: string;
-  public_key: string;
-  message_bcs: string;
-}
+import { COINS, COMPARATORS } from "../constants";
+import { CreateMarketModal } from "../components/CreateMarketModal";
 
 export function CreateMarketPage() {
-  const navigate = useNavigate();
   const account = useCurrentAccount();
-  const client = useSuiClient();
-  const { mutateAsync: signTransaction } = useSignTransaction();
-
-  const getCurrentNetwork = () => {
-    const url = (client as any).url || "";
-    if (url.includes("devnet")) return "devnet";
-    if (url.includes("testnet")) return "testnet";
-    if (url.includes("mainnet")) return "mainnet";
-    if (url.includes("localhost") || url.includes("127.0.0.1")) return "local";
-    return "testnet";
-  };
-
-  const currentNetwork = getCurrentNetwork();
-  const delphiPackageId =
-    (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
-      ?.delphiPackageId || "0x0";
-  const delphiConfigObjectId =
-    (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
-      ?.delphiConfigObjectId || "0x0";
-  const enclavePackageId =
-    (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
-      ?.enclavePackageId || "0x0";
-  const enclaveObjectId =
-    (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
-      ?.enclaveObjectId || "0x0";
 
   const [coin, setCoin] = useState("");
   const [comparator, setComparator] = useState<number | "">("");
   const [price, setPrice] = useState("");
   const [date, setDate] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
-  const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const [alertState, setAlertState] = useState<{
     open: boolean;
@@ -90,27 +34,6 @@ export function CreateMarketPage() {
     severity: "error",
   });
 
-  const formatDateForAPI = (dateStr: string): string => {
-    if (!dateStr) return "";
-    const [year, month, day] = dateStr.split("-");
-    return `${day}-${month}-${year}`;
-  };
-
-  const convertPriceToInteger = (priceStr: string): string => {
-    const num = parseFloat(priceStr);
-    if (isNaN(num)) return "0";
-    return Math.floor(num * 1_000_000_000).toString();
-  };
-
-  const hexToBytes = (hex: string): number[] => {
-    const cleanHex = hex.replace(/^0x/, "");
-    const bytes: number[] = [];
-    for (let i = 0; i < cleanHex.length; i += 2) {
-      bytes.push(parseInt(cleanHex.substr(i, 2), 16));
-    }
-    return bytes;
-  };
-
   const showAlert = (
     message: string,
     severity: "error" | "warning" | "info" | "success" = "error",
@@ -118,7 +41,7 @@ export function CreateMarketPage() {
     setAlertState({ open: true, message, severity });
   };
 
-  const handleValidate = async () => {
+  const handleCreateMarket = () => {
     if (!coin || comparator === "" || !price || !date) {
       showAlert("Please fill in all fields", "warning");
       return;
@@ -130,161 +53,15 @@ export function CreateMarketPage() {
       return;
     }
 
-    setIsValidating(true);
-    try {
-      const formattedDate = formatDateForAPI(date);
-      const priceInteger = convertPriceToInteger(price);
-
-      const payload = {
-        payload: {
-          type: MARKET_TYPE,
-          date: formattedDate,
-          coin: coin,
-          comparator: comparator as number,
-          price: priceInteger, // Send as string to preserve precision for large numbers
-          result: MARKET_RESULT,
-        },
-      };
-
-      const response = await fetch(API_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
-      }
-
-      const data: ApiResponse = await response.json();
-      setApiResponse(data);
-      setIsValidating(false);
-    } catch (error: any) {
-      showAlert(`Error validating market: ${error.message}`, "error");
-      setIsValidating(false);
-    }
+    setShowCreateModal(true);
   };
 
-  const handleCreateMarket = async () => {
-    if (!account || !apiResponse) {
-      showAlert("Please validate the market first", "warning");
-      return;
-    }
-
-    if (!delphiPackageId || delphiPackageId === "0x0") {
-      showAlert(
-        "Delphi package not found. Please set delphiPackageId in networkConfig.ts",
-        "error",
-      );
-      return;
-    }
-
-    if (!delphiConfigObjectId || delphiConfigObjectId === "0x0") {
-      showAlert(
-        "Delphi config object not found. Please set delphiConfigObjectId in networkConfig.ts",
-        "error",
-      );
-      return;
-    }
-
-    if (!enclavePackageId || enclavePackageId === "0x0") {
-      showAlert(
-        "Enclave package not found. Please set enclavePackageId in networkConfig.ts",
-        "error",
-      );
-      return;
-    }
-
-    if (!enclaveObjectId || enclaveObjectId === "0x0") {
-      showAlert(
-        "Enclave object not found. Please set enclaveObjectId in networkConfig.ts",
-        "error",
-      );
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const tx = new Transaction();
-      const sigBytes = hexToBytes(apiResponse.signature);
-      const apiPayload = apiResponse.payload;
-
-      tx.moveCall({
-        target: `${delphiPackageId}::delphi::create_market`,
-        typeArguments: [`${delphiPackageId}::delphi::DELPHI`],
-        arguments: [
-          tx.object(delphiConfigObjectId),
-          tx.pure.u64(BigInt(apiPayload.type)),
-          tx.pure.string(apiPayload.date),
-          tx.pure.string(apiPayload.coin),
-          tx.pure.u64(BigInt(apiPayload.comparator)),
-          tx.pure.u64(BigInt(apiPayload.price)),
-          tx.pure.u64(BigInt(apiPayload.result)),
-          tx.pure.u64(BigInt(apiResponse.timestamp_ms)),
-          tx.pure.vector("u8", sigBytes),
-          tx.object(enclaveObjectId),
-        ],
-      });
-
-      const signature = await signTransaction({
-        transaction: tx,
-      });
-
-      const result = await client.executeTransactionBlock({
-        transactionBlock: signature.bytes,
-        signature: signature.signature,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-        },
-      });
-
-      // Find the created market object
-      const createdMarket = result.objectChanges?.find(
-        (change) =>
-          change.type === "created" &&
-          "objectType" in change &&
-          change.objectType?.includes("Market"),
-      );
-
-      if (createdMarket && "objectId" in createdMarket) {
-        const marketId = createdMarket.objectId;
-        showAlert(
-          `Market created successfully! Redirecting to market...`,
-          "success",
-        );
-        // Reset form
-        setCoin("");
-        setComparator("");
-        setPrice("");
-        setDate("");
-        setApiResponse(null);
-        setIsLoading(false);
-        // Redirect to market detail page after a short delay
-        setTimeout(() => {
-          navigate(`/market/${marketId}`);
-        }, 1500);
-      } else {
-        showAlert("Transaction completed successfully!", "success");
-        setCoin("");
-        setComparator("");
-        setPrice("");
-        setDate("");
-        setApiResponse(null);
-        setIsLoading(false);
-      }
-    } catch (error: any) {
-      const errorMessage =
-        error.message ||
-        error.data?.message ||
-        (typeof error === "string" ? error : "Failed to create market");
-
-      showAlert(errorMessage, "error");
-      setIsLoading(false);
-    }
+  const handleMarketCreated = () => {
+    // Reset form after market is created
+    setCoin("");
+    setComparator("");
+    setPrice("");
+    setDate("");
   };
 
   if (!account) {
@@ -585,7 +362,6 @@ export function CreateMarketPage() {
                           setPrice(value);
                         }
                       }}
-                      disabled={isLoading || isValidating}
                       style={{ width: "220px" }}
                       className={`form-input ${price ? "form-input-filled" : ""}`}
                     />
@@ -634,7 +410,6 @@ export function CreateMarketPage() {
                           setDate(value);
                         }
                       }}
-                      disabled={isLoading || isValidating}
                       style={{ width: "240px", paddingRight: "50px" }}
                       className={`form-input ${date ? "form-input-filled" : ""}`}
                     />
@@ -655,7 +430,6 @@ export function CreateMarketPage() {
                         pointerEvents: "auto",
                         zIndex: 1,
                       }}
-                      disabled={isLoading || isValidating}
                     />
                     <Box
                       style={{
@@ -723,147 +497,34 @@ export function CreateMarketPage() {
             <Flex
               gap="4"
               align="center"
-              justify="between"
-              wrap="wrap"
+              justify="center"
               style={{
                 paddingTop: "32px",
                 borderTop: "2px solid var(--oracle-border)",
                 marginTop: "8px",
               }}
             >
-              <Box style={{ flex: 1, minWidth: "200px" }}>
-                {apiResponse && (
-                  <Flex
-                    align="center"
-                    gap="3"
-                    p="3"
-                    style={{
-                      background: "rgba(79, 188, 128, 0.1)",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(79, 188, 128, 0.3)",
-                    }}
-                  >
-                    <Flex
-                      align="center"
-                      justify="center"
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "50%",
-                        background: "var(--oracle-bullish)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Text size="3" style={{ color: "white" }} weight="bold">
-                        ✓
-                      </Text>
-                    </Flex>
-                    <Box
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "4px",
-                      }}
-                    >
-                      <Text
-                        size="3"
-                        style={{ color: "var(--oracle-bullish)" }}
-                        weight="medium"
-                      >
-                        Market validated successfully
-                      </Text>
-                      <Text
-                        size="1"
-                        style={{ color: "var(--oracle-text-muted)" }}
-                      >
-                        Ready to deploy on-chain
-                      </Text>
-                    </Box>
-                  </Flex>
-                )}
-              </Box>
-
-              <Flex gap="3" style={{ flexShrink: 0 }}>
-                <Button
-                  size="3"
-                  className="crypto-button"
-                  onClick={handleValidate}
-                  disabled={
-                    isLoading ||
-                    isValidating ||
-                    !coin ||
-                    comparator === "" ||
-                    !price ||
-                    !date
-                  }
-                  style={{
-                    minWidth: "160px",
-                    height: "52px",
-                    fontSize: "17px",
-                    fontWeight: 600,
-                    borderRadius: "10px",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    opacity:
-                      !coin || comparator === "" || !price || !date ? 0.5 : 1,
-                  }}
-                >
-                  {isValidating ? (
-                    <Flex align="center" gap="2">
-                      <Box
-                        style={{
-                          width: "16px",
-                          height: "16px",
-                          border: "2px solid rgba(255,255,255,0.3)",
-                          borderTopColor: "white",
-                          borderRadius: "50%",
-                          animation: "spin 0.8s linear infinite",
-                        }}
-                      />
-                      Validating...
-                    </Flex>
-                  ) : (
-                    "Validate"
-                  )}
-                </Button>
-
-                {apiResponse && (
-                  <Button
-                    size="3"
-                    className="crypto-button"
-                    onClick={handleCreateMarket}
-                    disabled={isLoading || isValidating}
-                    style={{
-                      minWidth: "180px",
-                      height: "52px",
-                      fontSize: "17px",
-                      fontWeight: 600,
-                      borderRadius: "10px",
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      background:
-                        "linear-gradient(135deg, var(--market-primary) 0%, var(--market-primary-light) 100%)",
-                      boxShadow: "0 4px 20px rgba(59, 130, 246, 0.4)",
-                    }}
-                  >
-                    {isLoading ? (
-                      <Flex align="center" gap="2">
-                        <Box
-                          style={{
-                            width: "16px",
-                            height: "16px",
-                            border: "2px solid rgba(255,255,255,0.3)",
-                            borderTopColor: "white",
-                            borderRadius: "50%",
-                            animation: "spin 0.8s linear infinite",
-                          }}
-                        />
-                        Creating...
-                      </Flex>
-                    ) : (
-                      "Create Market"
-                    )}
-                  </Button>
-                )}
-              </Flex>
+              <Button
+                size="3"
+                className="crypto-button"
+                onClick={handleCreateMarket}
+                disabled={!coin || comparator === "" || !price || !date}
+                style={{
+                  minWidth: "200px",
+                  height: "52px",
+                  fontSize: "17px",
+                  fontWeight: 600,
+                  borderRadius: "10px",
+                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  opacity:
+                    !coin || comparator === "" || !price || !date ? 0.5 : 1,
+                  background:
+                    "linear-gradient(135deg, var(--market-primary) 0%, var(--market-primary-light) 100%)",
+                  boxShadow: "0 4px 20px rgba(59, 130, 246, 0.4)",
+                }}
+              >
+                Create Market
+              </Button>
             </Flex>
           </Box>
         </Card>
@@ -905,6 +566,20 @@ export function CreateMarketPage() {
             {alertState.message}
           </Alert>
         </Snackbar>
+
+        {coin && comparator !== "" && price && date && (
+          <CreateMarketModal
+            open={showCreateModal}
+            onOpenChange={setShowCreateModal}
+            marketData={{
+              coin,
+              comparator: comparator as number,
+              price,
+              date,
+            }}
+            onCreated={handleMarketCreated}
+          />
+        )}
       </Container>
     </Box>
   );
