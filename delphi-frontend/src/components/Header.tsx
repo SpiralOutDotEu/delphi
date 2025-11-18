@@ -102,21 +102,6 @@ export function Header() {
             <Box display={{ initial: "block", sm: "none" }}>Create</Box>
           </RouterLink>
         </Link>
-        <Link asChild>
-          <RouterLink
-            to="/admin"
-            style={{
-              textDecoration: "none",
-              color: "var(--oracle-text-secondary)",
-              fontWeight: 500,
-              transition: "color 0.2s ease",
-              fontSize: "clamp(14px, 2vw, 16px)",
-            }}
-            className="nav-link"
-          >
-            Admin
-          </RouterLink>
-        </Link>
         <Link
           onClick={(e) => {
             e.preventDefault();
