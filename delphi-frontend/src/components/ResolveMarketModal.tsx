@@ -82,9 +82,6 @@ export function ResolveMarketModal({
   const delphiConfigObjectId =
     (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
       ?.delphiConfigObjectId || "0x0";
-  const enclavePackageId =
-    (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
-      ?.enclavePackageId || "0x0";
   const enclaveObjectId =
     (networkConfig[currentNetwork as keyof typeof networkConfig] as any)
       ?.enclaveObjectId || "0x0";
