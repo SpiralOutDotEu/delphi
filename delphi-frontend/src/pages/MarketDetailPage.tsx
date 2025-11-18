@@ -558,11 +558,6 @@ export function MarketDetailPage() {
       return;
     }
 
-    if (!selectedPositionId) {
-      showAlert("Please open a position first", "warning");
-      return;
-    }
-
     if (!quote || quote === 0n) {
       showAlert("Please wait for quote to load", "warning");
       return;
@@ -606,6 +601,20 @@ export function MarketDetailPage() {
     try {
       const tx = new Transaction();
 
+      // Check if user has a position, if not, create one in the same transaction
+      let positionToUse: any;
+      if (!hasPosition || !selectedPositionId) {
+        // Create a new position first
+        const [newPosition] = tx.moveCall({
+          target: `${delphiPackageId}::delphi::open_position`,
+          arguments: [tx.object(marketId!)],
+        });
+        positionToUse = newPosition;
+      } else {
+        // Use existing position
+        positionToUse = tx.object(selectedPositionId);
+      }
+
       // Find or merge coins to get enough balance
       let selectedCoin: string | null = null;
       let totalBalanceCheck = BigInt(0);
@@ -634,7 +643,7 @@ export function MarketDetailPage() {
             arguments: [
               tx.object(delphiConfigObjectId), // config: &Config
               tx.object(marketId!), // market: &mut Market
-              tx.object(selectedPositionId), // position: Position
+              positionToUse, // position: Position (newly created or existing)
               paymentCoin, // payment: Coin<PSEUDO_USDC>
               tx.pure.u64(Number(amountInShares)), // amount: u64
               tx.pure.u8(sideValue), // side: u8
@@ -651,7 +660,7 @@ export function MarketDetailPage() {
             arguments: [
               tx.object(delphiConfigObjectId), // config: &Config
               tx.object(marketId!), // market: &mut Market
-              tx.object(selectedPositionId), // position: Position
+              positionToUse, // position: Position (newly created or existing)
               tx.object(selectedCoin), // payment: Coin<PSEUDO_USDC>
               tx.pure.u64(Number(amountInShares)), // amount: u64
               tx.pure.u8(sideValue), // side: u8
@@ -679,7 +688,7 @@ export function MarketDetailPage() {
           arguments: [
             tx.object(delphiConfigObjectId), // config: &Config
             tx.object(marketId!), // market: &mut Market
-            tx.object(selectedPositionId), // position: Position
+            positionToUse, // position: Position (newly created or existing)
             paymentCoin, // payment: Coin<PSEUDO_USDC>
             tx.pure.u64(Number(amountInShares)), // amount: u64
             tx.pure.u8(sideValue), // side: u8
@@ -2541,7 +2550,7 @@ export function MarketDetailPage() {
                                 textAlign: "center",
                                 height: "60px",
                               }}
-                              disabled={!selectedSide || !hasPosition}
+                              disabled={!selectedSide}
                             />
                             <Flex gap="2" mt="2">
                               {[
@@ -2560,7 +2569,7 @@ export function MarketDetailPage() {
                                       String(current + parseFloat(value)),
                                     );
                                   }}
-                                  disabled={!selectedSide || !hasPosition}
+                                  disabled={!selectedSide}
                                 >
                                   {label}
                                 </Button>
@@ -2604,8 +2613,8 @@ export function MarketDetailPage() {
                             )}
                           </Box>
 
-                          {/* Position Selection or Open Position Button */}
-                          {hasPosition ? (
+                          {/* Position Selection (if user has positions) */}
+                          {hasPosition && (
                             <Flex direction="column" gap="3">
                               {/* Position Selector (if multiple positions) */}
                               {userPositions.length > 1 && (
@@ -2763,79 +2772,40 @@ export function MarketDetailPage() {
                                 </Box>
                               ) : null}
                             </Flex>
-                          ) : (
-                            <Button
-                              size="4"
-                              variant="outline"
-                              onClick={handleOpenPosition}
-                              disabled={
-                                isOpeningPosition || !account || !market
-                              }
-                              style={{
-                                width: "100%",
-                                height: "50px",
-                                fontSize: "16px",
-                                fontWeight: 600,
-                                borderColor: "var(--oracle-border)",
-                                color: "var(--oracle-text-primary)",
-                                opacity:
-                                  isOpeningPosition || !account || !market
-                                    ? 0.5
-                                    : 1,
-                              }}
-                            >
-                              {isOpeningPosition ? (
-                                <Flex align="center" gap="2">
-                                  <Box
-                                    style={{
-                                      width: "16px",
-                                      height: "16px",
-                                      border: "2px solid rgba(255,255,255,0.3)",
-                                      borderTopColor: "currentColor",
-                                      borderRadius: "50%",
-                                      animation: "spin 0.8s linear infinite",
-                                    }}
-                                  />
-                                  Opening...
-                                </Flex>
-                              ) : (
-                                "Open Position"
-                              )}
-                            </Button>
                           )}
 
-                          {/* Buy Button - Only show if user has a position */}
-                          {hasPosition && (
-                            <Button
-                              size="4"
-                              className="crypto-button"
-                              style={{
-                                width: "100%",
-                                height: "50px",
-                                fontSize: "16px",
-                                fontWeight: 600,
-                              }}
-                              onClick={handleBuyShares}
-                              disabled={
-                                isBuyingShares ||
-                                !selectedSide ||
-                                !buyAmount ||
-                                parseFloat(buyAmount) <= 0 ||
-                                !quote ||
-                                quote === 0n ||
-                                isLoadingQuote
-                              }
-                            >
-                              {isBuyingShares ? (
-                                <Flex align="center" gap="2">
-                                  <Spinner size="1" />
-                                  Buying...
-                                </Flex>
-                              ) : (
-                                `Buy ${selectedSide === "yes" ? "Yes" : "No"} Shares`
-                              )}
-                            </Button>
-                          )}
+                          {/* Buy Button - Always show, position will be created automatically if needed */}
+                          <Button
+                            size="4"
+                            className="crypto-button"
+                            style={{
+                              width: "100%",
+                              height: "50px",
+                              fontSize: "16px",
+                              fontWeight: 600,
+                            }}
+                            onClick={handleBuyShares}
+                            disabled={
+                              isBuyingShares ||
+                              !selectedSide ||
+                              !buyAmount ||
+                              parseFloat(buyAmount) <= 0 ||
+                              !quote ||
+                              quote === 0n ||
+                              isLoadingQuote
+                            }
+                          >
+                            {isBuyingShares ? (
+                              <Flex align="center" gap="2">
+                                <Spinner size="1" />
+                                {!hasPosition
+                                  ? "Creating position & buying..."
+                                  : "Buying..."}
+                              </Flex>
+                            ) : (
+                              `Buy ${selectedSide === "yes" ? "Yes" : "No"} Shares`
+                            )}
+                          </Button>
 
                           <Text
                             size="1"
