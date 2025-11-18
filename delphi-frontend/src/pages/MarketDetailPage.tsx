@@ -2086,24 +2086,293 @@ export function MarketDetailPage() {
                       ) : null}
                     </Flex>
                   ) : (
-                    <Box
-                      style={{
-                        minHeight: "200px",
-                        background: "var(--oracle-secondary)",
-                        borderRadius: "8px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        border: "1px solid var(--oracle-border)",
-                      }}
-                    >
-                      <Text
-                        size="3"
-                        style={{ color: "var(--oracle-text-muted)" }}
+                    <Flex direction="column" gap="4">
+                      {/* Market Resolution Statistics */}
+                      <Box
+                        p="5"
+                        style={{
+                          background: "var(--oracle-secondary)",
+                          borderRadius: "12px",
+                          border: "2px solid var(--oracle-border)",
+                        }}
                       >
-                        You don't have any positions in this market
-                      </Text>
-                    </Box>
+                        <Flex direction="column" gap="4">
+                          <Box>
+                            <Text
+                              size="2"
+                              weight="medium"
+                              style={{
+                                color: "var(--oracle-text-secondary)",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.5px",
+                                marginBottom: "8px",
+                                display: "block",
+                              }}
+                            >
+                              Market Resolution
+                            </Text>
+                            <Text
+                              size="4"
+                              weight="bold"
+                              style={{
+                                color: "var(--oracle-text-primary)",
+                                marginBottom: "8px",
+                                display: "block",
+                              }}
+                            >
+                              {winningSide === "YES" ? "YES" : "NO"} Won
+                            </Text>
+                            <Text
+                              size="2"
+                              style={{
+                                color: "var(--oracle-text-muted)",
+                                display: "block",
+                              }}
+                            >
+                              This market has been resolved
+                            </Text>
+                          </Box>
+
+                          <Separator />
+
+                          {/* Market Statistics */}
+                          <Flex direction="column" gap="3">
+                            <Flex justify="between" align="center">
+                              <Text
+                                size="2"
+                                style={{
+                                  color: "var(--oracle-text-secondary)",
+                                }}
+                              >
+                                Total YES Shares:
+                              </Text>
+                              <Text size="3" weight="bold">
+                                {formatShares(actualYesShares)}
+                              </Text>
+                            </Flex>
+                            <Flex justify="between" align="center">
+                              <Text
+                                size="2"
+                                style={{
+                                  color: "var(--oracle-text-secondary)",
+                                }}
+                              >
+                                Total NO Shares:
+                              </Text>
+                              <Text size="3" weight="bold">
+                                {formatShares(actualNoShares)}
+                              </Text>
+                            </Flex>
+                            <Separator />
+                            <Box
+                              p="3"
+                              style={{
+                                background:
+                                  winningSide === "YES"
+                                    ? "rgba(79, 188, 128, 0.1)"
+                                    : "rgba(79, 188, 128, 0.1)",
+                                borderRadius: "8px",
+                                border: `2px solid ${
+                                  winningSide === "YES"
+                                    ? "var(--oracle-bullish)"
+                                    : "var(--oracle-bullish)"
+                                }`,
+                              }}
+                            >
+                              <Flex direction="column" gap="2">
+                                <Flex justify="between" align="center">
+                                  <Text
+                                    size="2"
+                                    weight="medium"
+                                    style={{
+                                      color: "var(--oracle-bullish)",
+                                    }}
+                                  >
+                                    Winning Shares ({winningSide}):
+                                  </Text>
+                                  <Text
+                                    size="3"
+                                    weight="bold"
+                                    style={{
+                                      color: "var(--oracle-bullish)",
+                                    }}
+                                  >
+                                    {formatShares(
+                                      winningSide === "YES"
+                                        ? actualYesShares
+                                        : actualNoShares,
+                                    )}
+                                  </Text>
+                                </Flex>
+                                {(() => {
+                                  const payoutPerShareStr =
+                                    market?.asMoveObject.contents.json
+                                      .payout_per_share || "0";
+                                  const payoutPerShare =
+                                    payoutPerShareStr !== "0"
+                                      ? Number(payoutPerShareStr) / 1_000_000
+                                      : 0;
+                                  const winningShares =
+                                    winningSide === "YES"
+                                      ? actualYesShares
+                                      : actualNoShares;
+                                  const totalWinningShares =
+                                    Number(winningShares);
+                                  const totalCollateralDistributed =
+                                    totalWinningShares * payoutPerShare;
+
+                                  return (
+                                    <>
+                                      <Flex justify="between" align="center">
+                                        <Text
+                                          size="2"
+                                          style={{
+                                            color:
+                                              "var(--oracle-text-secondary)",
+                                          }}
+                                        >
+                                          Total Collateral (Distributed):
+                                        </Text>
+                                        <Text
+                                          size="3"
+                                          weight="bold"
+                                          style={{
+                                            color: "var(--oracle-bullish)",
+                                          }}
+                                        >
+                                          $
+                                          {totalCollateralDistributed.toLocaleString(
+                                            "en-US",
+                                            {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 6,
+                                            },
+                                          )}{" "}
+                                          USDC
+                                        </Text>
+                                      </Flex>
+                                      <Separator />
+                                      <Flex justify="between" align="center">
+                                        <Text
+                                          size="2"
+                                          style={{
+                                            color:
+                                              "var(--oracle-text-secondary)",
+                                          }}
+                                        >
+                                          Payout per Share:
+                                        </Text>
+                                        <Text
+                                          size="3"
+                                          weight="bold"
+                                          style={{
+                                            color: "var(--oracle-bullish)",
+                                          }}
+                                        >
+                                          $
+                                          {payoutPerShare.toLocaleString(
+                                            "en-US",
+                                            {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 6,
+                                            },
+                                          )}
+                                        </Text>
+                                      </Flex>
+                                    </>
+                                  );
+                                })()}
+                              </Flex>
+                            </Box>
+                          </Flex>
+                        </Flex>
+                      </Box>
+
+                      {/* No Positions Message */}
+                      <Box
+                        p="6"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, rgba(79, 188, 128, 0.05) 0%, rgba(58, 141, 255, 0.05) 100%)",
+                          borderRadius: "12px",
+                          border: "1px solid var(--oracle-border)",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4",
+                          textAlign: "center",
+                        }}
+                      >
+                        <Box
+                          style={{
+                            width: "64px",
+                            height: "64px",
+                            borderRadius: "50%",
+                            background: "var(--oracle-secondary)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "2px solid var(--oracle-border)",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          <Text size="6" weight="bold">
+                            📊
+                          </Text>
+                        </Box>
+                        <Flex direction="column" gap="2">
+                          <Text
+                            size="4"
+                            weight="bold"
+                            style={{
+                              color: "var(--oracle-text-primary)",
+                            }}
+                          >
+                            No Open Positions
+                          </Text>
+                          <Text
+                            size="3"
+                            style={{
+                              color: "var(--oracle-text-secondary)",
+                              maxWidth: "400px",
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            You don't have any positions in this market. Explore
+                            other opportunities to participate in prediction
+                            markets.
+                          </Text>
+                        </Flex>
+                        <Button
+                          size="3"
+                          onClick={() => navigate("/explore")}
+                          style={{
+                            marginTop: "8px",
+                            padding: "12px 24px",
+                            fontSize: "16px",
+                            fontWeight: 600,
+                            background: "var(--oracle-primary)",
+                            color: "white",
+                            boxShadow: "0 4px 12px rgba(58, 141, 255, 0.3)",
+                            transition: "all 0.2s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform =
+                              "translateY(-2px)";
+                            e.currentTarget.style.boxShadow =
+                              "0 6px 16px rgba(58, 141, 255, 0.4)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow =
+                              "0 4px 12px rgba(58, 141, 255, 0.3)";
+                          }}
+                        >
+                          Explore Markets
+                        </Button>
+                      </Box>
+                    </Flex>
                   )}
                 </Box>
               </Card>
