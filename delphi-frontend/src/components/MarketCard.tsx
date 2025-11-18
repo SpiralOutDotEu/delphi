@@ -33,7 +33,10 @@ export function MarketCard({ market }: MarketCardProps) {
   const isResolved =
     marketData.resolved === true || marketData.resolved === "true";
   const outcome = marketData.outcome || "0";
-  const winningSide = outcome === "1" ? "YES" : outcome === "2" ? "NO" : null;
+  // Oracle result: 1 = YES, 2 = NO
+  // Market outcome: 1 = SIDE_YES (YES), 2 = SIDE_NO (NO)
+  const outcomeNum = typeof outcome === "string" ? parseInt(outcome, 10) : outcome;
+  const winningSide = outcomeNum === 1 ? "YES" : outcomeNum === 2 ? "NO" : null;
 
   const formatPrice = (priceStr: string): string => {
     const price = BigInt(priceStr);
@@ -106,7 +109,7 @@ export function MarketCard({ market }: MarketCardProps) {
               letterSpacing: "0.5px",
             }}
           >
-            {winningSide} Won
+            {winningSide === "YES" ? "YES Won" : winningSide === "NO" ? "NO Won" : "Won"}
           </Badge>
         </Box>
       )}
