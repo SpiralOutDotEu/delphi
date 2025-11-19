@@ -93,8 +93,14 @@ export function Landing() {
             <Button
               size={{ initial: "2", sm: "3" }}
               className="crypto-button-outline responsive-button"
+              asChild
             >
-              Learn More
+              <Link
+                to="/faq"
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                Learn More
+              </Link>
             </Button>
           </Flex>
 
