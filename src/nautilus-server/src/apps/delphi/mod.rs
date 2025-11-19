@@ -55,7 +55,9 @@ fn get_two_days_before_today() -> Result<String, EnclaveError> {
     let today = Utc::now().date_naive();
     let two_days_ago = today
         .checked_sub_signed(chrono::Duration::days(2))
-        .ok_or_else(|| EnclaveError::GenericError("Failed to calculate two days ago".to_string()))?;
+        .ok_or_else(|| {
+            EnclaveError::GenericError("Failed to calculate two days ago".to_string())
+        })?;
     Ok(format_date_dd_mm_yyyy(two_days_ago))
 }
 
@@ -67,62 +69,63 @@ fn price_f64_to_u64(price_f64: f64) -> Result<u64, EnclaveError> {
             "Price cannot be negative".to_string(),
         ));
     }
-    
+
     // Multiply by 10^9 (1 billion) to get 9 decimal places
     const DECIMALS: f64 = 1_000_000_000.0;
     let scaled = price_f64 * DECIMALS;
-    
+
     // Check for overflow (u64::MAX is 18,446,744,073,709,551,615)
     // Maximum price that can be represented: ~18,446,744,073.709551615 USD
     // Use a safe threshold slightly below u64::MAX to account for rounding
     const MAX_PRICE_USD: f64 = 18_446_744_073.0; // Safe maximum
     if price_f64 > MAX_PRICE_USD {
-        return Err(EnclaveError::GenericError(
-            format!("Price {} USD is too large to represent with 9 decimals (max: {} USD)", price_f64, MAX_PRICE_USD),
-        ));
+        return Err(EnclaveError::GenericError(format!(
+            "Price {} USD is too large to represent with 9 decimals (max: {} USD)",
+            price_f64, MAX_PRICE_USD
+        )));
     }
-    
+
     // Round to nearest integer and convert to u64
     let rounded = scaled.round();
     if rounded < 0.0 || rounded > u64::MAX as f64 {
-        return Err(EnclaveError::GenericError(
-            format!("Price {} USD cannot be converted to u64", price_f64),
-        ));
+        return Err(EnclaveError::GenericError(format!(
+            "Price {} USD cannot be converted to u64",
+            price_f64
+        )));
     }
-    
+
     Ok(rounded as u64)
 }
 
 /// Helper function to fetch crypto price from CoinGecko API
 /// Returns price as u64 with 9 decimals
-async fn fetch_crypto_price(
-    coin: &str,
-    date: &str,
-    api_key: &str,
-) -> Result<u64, EnclaveError> {
+async fn fetch_crypto_price(coin: &str, date: &str, api_key: &str) -> Result<u64, EnclaveError> {
     let client = reqwest::Client::new();
     let mut request = client
-        .get(&format!("https://api.coingecko.com/api/v3/coins/{}/history", coin))
+        .get(&format!(
+            "https://api.coingecko.com/api/v3/coins/{}/history",
+            coin
+        ))
         .query(&[("date", date)]);
-    
+
     // Add API key to headers if available
     if !api_key.is_empty() {
         request = request.header("x-cg-demo-api-key", api_key);
     }
-    
+
     let response = request.send().await.map_err(|e| {
         EnclaveError::GenericError(format!("Failed to get crypto price response: {}", e))
     })?;
-    
+
     let json = response.json::<Value>().await.map_err(|e| {
         EnclaveError::GenericError(format!("Failed to parse crypto price response: {}", e))
     })?;
-    
+
     // Extract closing price from the response
     let market_data = json.get("market_data").ok_or_else(|| {
         EnclaveError::GenericError("No market data available for this date".to_string())
     })?;
-    
+
     let current_price_f64 = market_data
         .get("current_price")
         .and_then(|cp| cp.get("usd"))
@@ -132,7 +135,7 @@ async fn fetch_crypto_price(
                 "No closing price available in USD for the requested date".to_string(),
             )
         })?;
-    
+
     // Convert f64 to u64 with 9 decimals
     price_f64_to_u64(current_price_f64)
 }
@@ -147,17 +150,18 @@ pub async fn process_data(
     let coin = &payload.coin;
     let comparator = payload.comparator;
     let input_price = payload.price;
-    
+
     // Validate that the input result is 0
     if payload.result != 0 {
-        return Err(EnclaveError::GenericError(
-            format!("Input result must be 0, got {}", payload.result),
-        ));
+        return Err(EnclaveError::GenericError(format!(
+            "Input result must be 0, got {}",
+            payload.result
+        )));
     }
-    
+
     // Validate that the input date is in valid DD-MM-YYYY format
     parse_date_dd_mm_yyyy(date)?;
-    
+
     // Validate comparator value
     if comparator != 1 && comparator != 2 {
         return Err(EnclaveError::GenericError(format!(
@@ -165,16 +169,16 @@ pub async fn process_data(
             comparator
         )));
     }
-    
+
     let (response_price, query_date, result) = if request_type == 1 {
         // Type 1: question
         // TODO: Intentionally we don't check if date is in the future so that we can test it
         // Create a date, in the correct format from today but two days before today
         let two_days_before = get_two_days_before_today()?;
-        
+
         // Do the query to get the closing price for the given coin, for the two days before today and get the closing price in usd
         let _price = fetch_crypto_price(coin, &two_days_before, &state.api_key).await?;
-        
+
         // If the query returns success and we have a price in usd then return a response json with price: 0
         // Result is always 0 for type 1
         (0u64, date.clone(), 0u64)
@@ -182,7 +186,7 @@ pub async fn process_data(
         // Type 2: answer
         // For the given date and coin, create the query and get the closing price of the given coin in usd
         let current_price = fetch_crypto_price(coin, date, &state.api_key).await?;
-        
+
         // Compare current price with input price based on comparator
         // Comparator 1: less or equal (current_price <= input_price)
         // Comparator 2: higher or equal (current_price >= input_price)
@@ -192,10 +196,10 @@ pub async fn process_data(
             // comparator == 2
             current_price >= input_price
         };
-        
+
         // Result: 1 if condition is true, 2 if condition is false
         let result = if condition_met { 1u64 } else { 2u64 };
-        
+
         // Return a json in the specified format with the actual price
         (current_price, date.clone(), result)
     } else {
@@ -204,13 +208,13 @@ pub async fn process_data(
             request_type
         )));
     };
-    
+
     // Get current timestamp for signing
     let current_timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|e| EnclaveError::GenericError(format!("Failed to get current timestamp: {}", e)))?
         .as_millis() as u64;
-    
+
     Ok(Json(to_signed_response(
         &state.eph_kp,
         CryptoPriceResponse {
@@ -238,12 +242,12 @@ mod test {
         // Get API_KEY from environment variable
         // Run test with: API_KEY=<API_KEY> cargo test --features delphi
         let api_key = std::env::var("API_KEY").unwrap_or_default();
-        
+
         let state = Arc::new(AppState {
             eph_kp: Ed25519KeyPair::generate(&mut rand::thread_rng()),
             api_key: api_key.clone(),
         });
-        
+
         // Test with type 1 (question) - matches the example request/response
         // Request: type 1, date "10-11-2025", coin "bitcoin", comparator 2, price 104709678616563, result 0
         // Expected response: type 1, date "10-11-2025", coin "bitcoin", comparator 2, price 0, result 0
@@ -256,12 +260,12 @@ mod test {
                     coin: "bitcoin".to_string(),
                     comparator: 2,
                     price: 104709678616563u64, // 104709.678616563 USD with 9 decimals
-                    result: 0u64, // Input result must be 0
+                    result: 0u64,              // Input result must be 0
                 },
             }),
         )
         .await;
-        
+
         // The test will pass if the API call succeeds
         if let Ok(signed_response) = result {
             assert_eq!(signed_response.response.data.r#type, 1);
@@ -280,12 +284,12 @@ mod test {
         // Get API_KEY from environment variable
         // Run test with: API_KEY=<API_KEY> cargo test --features delphi
         let api_key = std::env::var("API_KEY").unwrap_or_default();
-        
+
         let state = Arc::new(AppState {
             eph_kp: Ed25519KeyPair::generate(&mut rand::thread_rng()),
             api_key: api_key.clone(),
         });
-        
+
         // Test with type 2 (answer) - matches the example request/response
         // Request: type 2, date "10-11-2025", coin "bitcoin", comparator 2, price 104709678616563, result 0
         // Expected response: type 2, date "10-11-2025", coin "bitcoin", comparator 2, price 104709678616563, result 1
@@ -299,12 +303,12 @@ mod test {
                     coin: "bitcoin".to_string(),
                     comparator: 2,
                     price: 104709678616563u64, // 104709.678616563 USD with 9 decimals
-                    result: 0u64, // Input result must be 0
+                    result: 0u64,              // Input result must be 0
                 },
             }),
         )
         .await;
-        
+
         // The test will pass if the API call succeeds
         if let Ok(signed_response) = result {
             assert_eq!(signed_response.response.data.r#type, 2);
@@ -314,7 +318,10 @@ mod test {
             // For type 2, price should be the actual price from API
             assert_eq!(signed_response.response.data.price, 104709678616563u64);
             // Result should be 1 (condition met: current_price >= input_price) or 2 (condition not met)
-            assert!(signed_response.response.data.result == 1 || signed_response.response.data.result == 2);
+            assert!(
+                signed_response.response.data.result == 1
+                    || signed_response.response.data.result == 2
+            );
         }
         // If it fails, it's likely due to API availability, which is acceptable for tests
     }
@@ -340,5 +347,4 @@ mod test {
                     .unwrap()
         );
     }
-
 }
