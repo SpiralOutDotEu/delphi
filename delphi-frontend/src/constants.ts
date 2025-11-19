@@ -156,7 +156,7 @@ export const COMPARATORS = [
 ] as const;
 
 // API endpoint for signature validation
-export const API_ENDPOINT = "http://localhost:3000/process_data"; // Pseudo - Enclave API URL
+export const API_ENDPOINT = "https://delphi-black.vercel.app/process_data"; // Pseudo - Enclave API URL
 
 // Market creation constants
 export const MARKET_TYPE = 1; // Type 1 is for question

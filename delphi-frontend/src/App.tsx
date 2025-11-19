@@ -5,6 +5,7 @@ import { MyPositionsPage } from "./pages/MyPositionsPage";
 import { CreateMarketPage } from "./pages/CreateMarketPage";
 import { ExplorePage } from "./pages/ExplorePage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
+import { FAQPage } from "./pages/FAQPage";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/positions" element={<MyPositionsPage />} />
         <Route path="/create-market" element={<CreateMarketPage />} />
         <Route path="/market/:marketId" element={<MarketDetailPage />} />
+        <Route path="/faq" element={<FAQPage />} />
       </Routes>
     </BrowserRouter>
   );
