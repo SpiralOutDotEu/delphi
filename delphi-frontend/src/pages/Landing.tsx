@@ -63,10 +63,11 @@ export function Landing() {
               textAlign: "center",
             }}
           >
-            Binary prediction markets on SUI network powered by Automated Market
-            Making (AMM) and Trusted Execution Environment (TEE) oracles.
-            Harness collective intelligence through oracle reliability. Trade on
-            the outcome of real-world events with transparent market mechanics.
+            Turn data into truth, truth into value. Delphi creates provably
+            authentic prediction markets where every outcome is
+            cryptographically verified by independently auditable TEE oracles.
+            Harness collective intelligence through transparent markets where
+            accurate predictions are rewarded.
           </Text>
 
           {/* CTA Buttons */}
@@ -235,30 +236,30 @@ export function Landing() {
                     Stocks
                   </Heading>
                   <Flex align="center" gap="2">
-                  <Box
-                    style={{
-                      background: "rgba(58, 141, 255, 0.15)",
-                      borderRadius: "12px",
-                      padding: "4px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      border: "1px solid var(--oracle-border)",
-                    }}
-                  >
-                    <ClockIcon
-                      width="14"
-                      height="14"
-                      color="var(--oracle-glow)"
-                    />
-                    <Text
-                      size="2"
-                      weight="bold"
-                      style={{ color: "var(--oracle-glow)" }}
+                    <Box
+                      style={{
+                        background: "rgba(58, 141, 255, 0.15)",
+                        borderRadius: "12px",
+                        padding: "4px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        border: "1px solid var(--oracle-border)",
+                      }}
                     >
-                      Coming Soon
-                    </Text>
-                  </Box>
+                      <ClockIcon
+                        width="14"
+                        height="14"
+                        color="var(--oracle-glow)"
+                      />
+                      <Text
+                        size="2"
+                        weight="bold"
+                        style={{ color: "var(--oracle-glow)" }}
+                      >
+                        Coming Soon
+                      </Text>
+                    </Box>
                   </Flex>
                 </Flex>
               </Box>
@@ -292,30 +293,30 @@ export function Landing() {
                     Sports
                   </Heading>
                   <Flex align="center" gap="2">
-                  <Box
-                    style={{
-                      background: "rgba(58, 141, 255, 0.15)",
-                      borderRadius: "12px",
-                      padding: "4px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      border: "1px solid var(--oracle-border)",
-                    }}
-                  >
-                    <ClockIcon
-                      width="14"
-                      height="14"
-                      color="var(--oracle-glow)"
-                    />
-                    <Text
-                      size="2"
-                      weight="bold"
-                      style={{ color: "var(--oracle-glow)" }}
+                    <Box
+                      style={{
+                        background: "rgba(58, 141, 255, 0.15)",
+                        borderRadius: "12px",
+                        padding: "4px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        border: "1px solid var(--oracle-border)",
+                      }}
                     >
-                      Coming Soon
-                    </Text>
-                  </Box>
+                      <ClockIcon
+                        width="14"
+                        height="14"
+                        color="var(--oracle-glow)"
+                      />
+                      <Text
+                        size="2"
+                        weight="bold"
+                        style={{ color: "var(--oracle-glow)" }}
+                      >
+                        Coming Soon
+                      </Text>
+                    </Box>
                   </Flex>
                 </Flex>
               </Box>
@@ -349,30 +350,30 @@ export function Landing() {
                     More
                   </Heading>
                   <Flex align="center" gap="2">
-                  <Box
-                    style={{
-                      background: "rgba(58, 141, 255, 0.15)",
-                      borderRadius: "12px",
-                      padding: "4px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      border: "1px solid var(--oracle-border)",
-                    }}
-                  >
-                    <ClockIcon
-                      width="14"
-                      height="14"
-                      color="var(--oracle-glow)"
-                    />
-                    <Text
-                      size="2"
-                      weight="bold"
-                      style={{ color: "var(--oracle-glow)" }}
+                    <Box
+                      style={{
+                        background: "rgba(58, 141, 255, 0.15)",
+                        borderRadius: "12px",
+                        padding: "4px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        border: "1px solid var(--oracle-border)",
+                      }}
                     >
-                      Coming Soon
-                    </Text>
-                  </Box>
+                      <ClockIcon
+                        width="14"
+                        height="14"
+                        color="var(--oracle-glow)"
+                      />
+                      <Text
+                        size="2"
+                        weight="bold"
+                        style={{ color: "var(--oracle-glow)" }}
+                      >
+                        Coming Soon
+                      </Text>
+                    </Box>
                   </Flex>
                 </Flex>
               </Box>
@@ -405,8 +406,9 @@ export function Landing() {
                 color: "var(--oracle-text-secondary)",
               }}
             >
-              Trade binary markets on any event with transparent, decentralized
-              infrastructure
+              Verifiable authenticity meets collective intelligence. Every data
+              point is cryptographically proven, every outcome independently
+              auditable.
             </Text>
 
             {/* Feature Cards */}
@@ -447,11 +449,14 @@ export function Landing() {
                 </Heading>
                 <Text
                   size={{ initial: "2", sm: "3" }}
-                  style={{ lineHeight: 1.5, color: "var(--oracle-text-secondary)" }}
+                  style={{
+                    lineHeight: 1.5,
+                    color: "var(--oracle-text-secondary)",
+                  }}
                 >
-                  Trusted Execution Environments provide provably authentic data
-                  sources for market resolution, ensuring oracle reliability and
-                  transparent outcomes.
+                  Independently verifiable TEE oracles with reproducible builds.
+                  Anyone can verify the code matches our public repository—no
+                  trust required, only cryptographic proof of authenticity.
                 </Text>
               </Box>
 
@@ -482,11 +487,15 @@ export function Landing() {
                 </Heading>
                 <Text
                   size={{ initial: "2", sm: "3" }}
-                  style={{ lineHeight: 1.5, color: "var(--oracle-text-secondary)" }}
+                  style={{
+                    lineHeight: 1.5,
+                    color: "var(--oracle-text-secondary)",
+                  }}
                 >
-                  Automated Market Making provides continuous liquidity for
-                  binary markets, enabling instant trades at fair prices with
-                  minimal slippage.
+                  Continuous liquidity with dynamic pricing that reflects
+                  collective market sentiment. Early correct predictions are
+                  rewarded more, turning accurate forecasting into tangible
+                  value.
                 </Text>
               </Box>
 
@@ -517,10 +526,14 @@ export function Landing() {
                 </Heading>
                 <Text
                   size={{ initial: "2", sm: "3" }}
-                  style={{ lineHeight: 1.5, color: "var(--oracle-text-secondary)" }}
+                  style={{
+                    lineHeight: 1.5,
+                    color: "var(--oracle-text-secondary)",
+                  }}
                 >
-                  Simple Yes/No markets on any event. Trade on politics, sports,
-                  economics, and more with transparent, on-chain resolution.
+                  Transform real-world data into tradable markets. The oracle
+                  verifies question validity and outcome authenticity, while the
+                  AMM handles pricing and rewards based on market dynamics.
                 </Text>
               </Box>
             </Box>
