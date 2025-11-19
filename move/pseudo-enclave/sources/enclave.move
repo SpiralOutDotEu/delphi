@@ -8,6 +8,7 @@ module enclave::enclave;
 use std::bcs;
 use std::string::String;
 use sui::ed25519;
+use sui::event;
 use sui::nitro_attestation::NitroAttestationDocument;
 
 use fun to_pcrs as NitroAttestationDocument.to_pcrs;
@@ -36,6 +37,15 @@ public struct EnclaveConfig<phantom T> has key {
     version: u64, // Incremented when pcrs change. 
 }
 
+// Pseudo-enclave config that uses a public key instead of PCRs.
+public struct PseudoEnclaveConfig<phantom T> has key {
+    id: UID,
+    name: String,
+    pk: vector<u8>,
+    capability_id: ID,
+    version: u64, // Incremented when pk changes.
+}
+
 // A verified enclave instance, with its public key.
 public struct Enclave<phantom T> has key {
     id: UID,
@@ -54,6 +64,14 @@ public struct IntentMessage<T: drop> has copy, drop {
     intent: u8,
     timestamp_ms: u64,
     payload: T,
+}
+
+// Event emitted when an enclave is created with a public key.
+public struct EnclaveCreatedWithPk has copy, drop {
+    enclave_id: ID,
+    pk: vector<u8>,
+    config_version: u64,
+    owner: address,
 }
 
 /// Create a new `Cap` using a `witness` T from a module.
@@ -96,6 +114,73 @@ public fun register_enclave<T>(
         owner: ctx.sender(),
     };
 
+    transfer::share_object(enclave);
+}
+
+/// Create a pseudo-enclave config with a public key (instead of PCRs).
+/// Similar to `create_enclave_config` but for pseudo-enclaves.
+public fun pseudo_create_enclave_config<T: drop>(
+    cap: &Cap<T>,
+    name: String,
+    pk: vector<u8>,
+    ctx: &mut TxContext,
+) {
+    let pseudo_config = PseudoEnclaveConfig<T> {
+        id: object::new(ctx),
+        name,
+        pk,
+        capability_id: cap.id.to_inner(),
+        version: 0,
+    };
+
+    transfer::share_object(pseudo_config);
+}
+
+/// Register a pseudo-enclave using the config's public key.
+/// Similar to `register_enclave` but without Nitro attestation.
+public fun pseudo_register_enclave<T>(
+    pseudo_config: &PseudoEnclaveConfig<T>,
+    ctx: &mut TxContext,
+) {
+    let pk = pseudo_config.pk;
+
+    let enclave = Enclave<T> {
+        id: object::new(ctx),
+        pk,
+        config_version: pseudo_config.version,
+        owner: ctx.sender(),
+    };
+
+    transfer::share_object(enclave);
+}
+
+/// Pseudo-enclave with a custom public key. Used for TypeScript API key in the dev / non-Nitro setup.
+///
+/// - `pk` must be a 32-byte Ed25519 public key.
+/// - The created Enclave<T> is shared, so any contract can later
+///   call `verify_signature` on it.
+public fun create_enclave_with_pk<T>(
+    pk: vector<u8>,
+    ctx: &mut TxContext,
+) {
+    let owner = ctx.sender();
+    let config_version = 0;
+    let enclave_id = object::new(ctx);
+    let enclave_id_value = enclave_id.to_inner();
+    let enclave = Enclave<T> {
+        id: enclave_id,
+        pk,
+        config_version,
+        owner,
+    };
+    
+    event::emit(EnclaveCreatedWithPk {
+        enclave_id: enclave_id_value,
+        pk,
+        config_version,
+        owner,
+    });
+    
     transfer::share_object(enclave);
 }
 
@@ -158,6 +243,10 @@ public fun deploy_old_enclave_by_owner<T>(e: Enclave<T>, ctx: &mut TxContext) {
 
 fun assert_is_valid_for_config<T>(cap: &Cap<T>, enclave_config: &EnclaveConfig<T>) {
     assert!(cap.id.to_inner() == enclave_config.capability_id, EInvalidCap);
+}
+
+fun assert_is_valid_for_pseudo_config<T>(cap: &Cap<T>, pseudo_config: &PseudoEnclaveConfig<T>) {
+    assert!(cap.id.to_inner() == pseudo_config.capability_id, EInvalidCap);
 }
 
 fun load_pk<T>(enclave_config: &EnclaveConfig<T>, document: &NitroAttestationDocument): vector<u8> {

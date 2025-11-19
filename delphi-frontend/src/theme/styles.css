@@ -1,0 +1,689 @@
+/* Mystic Midnight Oracle theme - Ancient Delphi inspired */
+:root {
+  /* Primary Oracle Colors */
+  --oracle-bg: #0c1220;
+  --oracle-primary: #3a8dff;
+  --oracle-secondary: #1e2435;
+  --oracle-gold: #d4a94e;
+  --oracle-glow: #598dff;
+
+  /* Text Colors */
+  --oracle-text-primary: #e6edf7;
+  --oracle-text-secondary: #a9b4c6;
+  --oracle-text-muted: #6c7586;
+
+  /* Market Colors */
+  --oracle-bullish: #4fbc80;
+  --oracle-bearish: #ff6e6e;
+
+  /* Effects */
+  --oracle-border: rgba(58, 141, 255, 0.2);
+  --oracle-gold-glow: rgba(212, 169, 78, 0.3);
+  --oracle-primary-glow: rgba(58, 141, 255, 0.3);
+  --oracle-primary-glow-strong: rgba(58, 141, 255, 0.5);
+
+  /* Card & Background */
+  --oracle-bg-card: rgba(30, 36, 53, 0.8);
+  --oracle-bg-panel: rgba(30, 36, 53, 0.6);
+  --oracle-input-filled-bg: rgba(58, 141, 255, 0.1);
+  --oracle-input-hover-bg: rgba(58, 141, 255, 0.05);
+
+  /* Legacy support for existing components */
+  --market-primary: var(--oracle-primary);
+  --market-primary-dark: #2e7ae6;
+  --market-primary-light: #5a9fff;
+  --market-accent: var(--oracle-glow);
+  --market-success: var(--oracle-bullish);
+  --market-danger: var(--oracle-bearish);
+  --market-bg-dark: var(--oracle-secondary);
+  --market-bg-darker: var(--oracle-bg);
+  --market-bg-card: var(--oracle-bg-card);
+  --market-border: var(--oracle-border);
+  --market-glow: var(--oracle-primary-glow);
+  --market-glow-strong: var(--oracle-primary-glow-strong);
+
+  --crypto-primary: var(--oracle-primary);
+  --crypto-secondary: var(--oracle-secondary);
+  --crypto-accent: var(--oracle-glow);
+  --crypto-bg-dark: var(--oracle-secondary);
+  --crypto-bg-darker: var(--oracle-bg);
+  --crypto-bg-card: var(--oracle-bg-card);
+  --crypto-border: var(--oracle-border);
+  --crypto-glow: var(--oracle-primary-glow);
+  --crypto-glow-strong: var(--oracle-primary-glow-strong);
+}
+
+body {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(30, 36, 53, 0.3) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(58, 141, 255, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 100%,
+      rgba(12, 18, 32, 0.6) 0%,
+      transparent 50%
+    ),
+    linear-gradient(180deg, #0c1220 0%, #0a0f1c 40%, #080b14 100%);
+  background-attachment: fixed;
+  color: var(--oracle-text-primary);
+  min-height: 100vh;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Ensure root element has the background */
+#root {
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(30, 36, 53, 0.3) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(58, 141, 255, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 100%,
+      rgba(12, 18, 32, 0.6) 0%,
+      transparent 50%
+    ),
+    linear-gradient(180deg, #0c1220 0%, #0a0f1c 40%, #080b14 100%);
+  background-attachment: fixed;
+}
+
+/* Page container background - ensures all pages have consistent background */
+.page-container {
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(30, 36, 53, 0.4) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 70% 80%,
+      rgba(58, 141, 255, 0.1) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(58, 141, 255, 0.05) 0%,
+      transparent 70%
+    ),
+    linear-gradient(180deg, #0c1220 0%, #0a0f1c 30%, #080b14 70%, #0c1220 100%);
+  min-height: calc(100vh - 80px);
+  position: relative;
+}
+
+.page-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(
+      circle at 20% 30%,
+      rgba(58, 141, 255, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(58, 141, 255, 0.06) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(58, 141, 255, 0.03) 0%,
+      transparent 70%
+    );
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+.page-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero section styles - Oracle Temple aesthetic */
+.hero-section {
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(30, 36, 53, 0.4) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 70% 80%,
+      rgba(58, 141, 255, 0.1) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(58, 141, 255, 0.05) 0%,
+      transparent 70%
+    ),
+    linear-gradient(180deg, #0c1220 0%, #0a0f1c 30%, #080b14 70%, #0c1220 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(
+      circle at 20% 30%,
+      rgba(58, 141, 255, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(58, 141, 255, 0.06) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(58, 141, 255, 0.03) 0%,
+      transparent 70%
+    );
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+.hero-section > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Glow effects for market elements */
+.crypto-glow {
+  box-shadow: 0 0 20px var(--market-glow);
+}
+
+.crypto-glow-hover:hover {
+  box-shadow: 0 0 40px var(--market-glow-strong);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Card styles - Temple stone aesthetic */
+.crypto-card {
+  background: var(--oracle-bg-card);
+  border: 1px solid var(--oracle-border);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.crypto-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--oracle-primary),
+    var(--oracle-gold),
+    var(--oracle-primary),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.crypto-card:hover {
+  border-color: var(--oracle-primary);
+  box-shadow:
+    0 12px 40px var(--oracle-primary-glow),
+    0 0 0 1px var(--oracle-gold-glow);
+  transform: translateY(-4px);
+  background: rgba(30, 36, 53, 0.95);
+}
+
+.crypto-card:hover::before {
+  opacity: 1;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--oracle-primary),
+    var(--oracle-gold),
+    var(--oracle-primary),
+    transparent
+  );
+}
+
+/* Feature card icon container - Oracle divine icons */
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    var(--oracle-primary) 0%,
+    var(--oracle-glow) 50%,
+    var(--oracle-primary) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow:
+    0 4px 16px var(--oracle-primary-glow),
+    0 0 0 1px var(--oracle-gold-glow);
+  transition: all 0.3s ease;
+}
+
+.crypto-card:hover .feature-icon {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow:
+    0 6px 24px var(--oracle-primary-glow-strong),
+    0 0 0 2px var(--oracle-gold);
+}
+
+/* Button styles - Oracle divine buttons */
+.crypto-button {
+  background: var(--oracle-primary);
+  border: 2px solid transparent;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px var(--oracle-primary-glow);
+  position: relative;
+  overflow: hidden;
+}
+
+.crypto-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.crypto-button:hover {
+  background: #2e7ae6;
+  box-shadow:
+    0 6px 24px var(--oracle-primary-glow-strong),
+    0 0 0 1px var(--oracle-gold);
+  transform: translateY(-2px);
+  border-color: var(--oracle-gold);
+}
+
+.crypto-button:hover::before {
+  left: 100%;
+}
+
+.crypto-button-outline {
+  border: 2px solid var(--oracle-border);
+  background: transparent;
+  color: var(--oracle-text-secondary);
+  transition: all 0.3s ease;
+}
+
+.crypto-button-outline:hover {
+  border-color: var(--oracle-primary);
+  background: rgba(58, 141, 255, 0.1);
+  color: var(--oracle-text-primary);
+  box-shadow:
+    0 4px 16px var(--oracle-primary-glow),
+    0 0 0 1px var(--oracle-gold-glow);
+  transform: translateY(-2px);
+}
+
+/* Binary market buttons - Oracle colors */
+.market-button-yes {
+  background: var(--oracle-bullish);
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.market-button-yes:hover {
+  background: #3fa66f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 188, 128, 0.4);
+  border: 1px solid var(--oracle-gold);
+}
+
+.market-button-no {
+  background: var(--oracle-bearish);
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.market-button-no:hover {
+  background: #e65a5a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 110, 110, 0.4);
+  border: 1px solid var(--oracle-gold);
+}
+
+/* Text gradient - Oracle divine glow */
+.text-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--oracle-gold) 0%,
+    var(--oracle-primary) 50%,
+    var(--oracle-glow) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Brand name styling - Serif font like in image */
+.brand-name {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: var(--oracle-gold);
+  text-shadow:
+    0 0 20px var(--oracle-gold-glow),
+    0 0 40px rgba(212, 169, 78, 0.2);
+}
+
+/* Section heading */
+.section-heading {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--oracle-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Divine logo styles */
+@keyframes logo-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 15px var(--oracle-gold-glow))
+      drop-shadow(0 0 25px var(--oracle-primary-glow));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px var(--oracle-gold-glow))
+      drop-shadow(0 0 35px var(--oracle-primary-glow-strong));
+  }
+}
+
+@keyframes divine-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.logo-container {
+  animation: logo-glow 3s ease-in-out infinite;
+}
+
+/* Divine Greek letters logo */
+.delphi-logo {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 1em;
+  line-height: 1;
+  color: var(--oracle-gold);
+  background: linear-gradient(
+    135deg,
+    #d4a94e 0%,
+    #f5d76e 25%,
+    #d4a94e 50%,
+    #b8943a 75%,
+    #d4a94e 100%
+  );
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: divine-shimmer 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px var(--oracle-gold-glow))
+    drop-shadow(0 0 20px var(--oracle-primary-glow));
+  text-shadow: 0 0 30px rgba(212, 169, 78, 0.5);
+  position: relative;
+}
+
+.delphi-logo::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    circle,
+    var(--oracle-primary-glow) 0%,
+    transparent 70%
+  );
+  opacity: 0.3;
+  z-index: -1;
+  filter: blur(10px);
+}
+
+/* Navigation link hover - Oracle divine glow */
+.nav-link:hover {
+  color: var(--oracle-primary) !important;
+  text-shadow: 0 0 10px var(--oracle-primary-glow);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Responsive feature cards grid */
+.feature-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(12px, 3vw, 24px);
+}
+
+@media (min-width: 640px) {
+  .feature-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .feature-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Responsive buttons */
+.responsive-button {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .responsive-button {
+    width: auto;
+  }
+}
+
+/* Markets grid */
+.markets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: clamp(16px, 3vw, 24px);
+}
+
+@media (min-width: 640px) {
+  .markets-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .markets-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Market cards */
+.market-card {
+  background: var(--oracle-bg-card);
+  border: 1px solid var(--oracle-border);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.market-card-available {
+  border-color: var(--oracle-primary);
+  box-shadow: 0 4px 16px var(--oracle-primary-glow);
+}
+
+.market-card-available:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 8px 24px var(--oracle-primary-glow-strong),
+    0 0 0 1px var(--oracle-gold-glow);
+  border-color: var(--oracle-gold);
+}
+
+.market-card-coming-soon {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.market-card-coming-soon:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
+
+.market-icon-available {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 4px 16px var(--oracle-primary-glow);
+  }
+  50% {
+    box-shadow:
+      0 4px 20px var(--oracle-primary-glow-strong),
+      0 0 0 1px var(--oracle-gold-glow);
+  }
+}
+
+/* Form input styles - Oracle theme */
+.form-input {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 19px;
+  padding: 16px 20px;
+  height: 52px;
+  border-radius: 10px;
+  background: var(--oracle-secondary) !important;
+  border: 2px solid var(--oracle-border) !important;
+  color: var(--oracle-text-muted) !important;
+  font-weight: 400;
+}
+
+.form-input:hover {
+  border-color: var(--oracle-primary) !important;
+  background: var(--oracle-input-hover-bg) !important;
+}
+
+.form-input:focus,
+.form-input:focus-within {
+  border-color: var(--oracle-primary) !important;
+  box-shadow: 0 0 0 3px var(--oracle-primary-glow) !important;
+  background: var(--oracle-input-filled-bg) !important;
+  outline: none;
+  color: var(--oracle-text-primary) !important;
+  font-weight: 500;
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Form input filled state - applied via className */
+.form-input-filled {
+  background: var(--oracle-input-filled-bg) !important;
+  border-color: var(--oracle-primary) !important;
+  color: var(--oracle-text-primary) !important;
+  font-weight: 500;
+}
+
+/* Pulse animation for success indicator */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* Spin animation for loading indicators */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Explore page container - full width on normal screens, 80% on extra large */
+.explore-container {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (min-width: 1536px) {
+  .explore-container {
+    width: 80% !important;
+    max-width: 80% !important;
+  }
+}
