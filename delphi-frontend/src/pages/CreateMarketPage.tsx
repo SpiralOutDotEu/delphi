@@ -64,22 +64,6 @@ export function CreateMarketPage() {
     setDate("");
   };
 
-  if (!account) {
-    return (
-      <Box className="page-container">
-        <Container size="4" py="6">
-          <Card className="crypto-card">
-            <Box p="6">
-              <Text size="4" color="gray">
-                Please connect your wallet to create a market.
-              </Text>
-            </Box>
-          </Card>
-        </Container>
-      </Box>
-    );
-  }
-
   return (
     <Box className="page-container">
       <Container
@@ -508,7 +492,9 @@ export function CreateMarketPage() {
                 size="3"
                 className="crypto-button"
                 onClick={handleCreateMarket}
-                disabled={!coin || comparator === "" || !price || !date}
+                disabled={
+                  !account || !coin || comparator === "" || !price || !date
+                }
                 style={{
                   minWidth: "200px",
                   height: "52px",
@@ -517,13 +503,15 @@ export function CreateMarketPage() {
                   borderRadius: "10px",
                   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                   opacity:
-                    !coin || comparator === "" || !price || !date ? 0.5 : 1,
+                    !account || !coin || comparator === "" || !price || !date
+                      ? 0.5
+                      : 1,
                   background:
                     "linear-gradient(135deg, var(--market-primary) 0%, var(--market-primary-light) 100%)",
                   boxShadow: "0 4px 20px rgba(59, 130, 246, 0.4)",
                 }}
               >
-                Create Market
+                {!account ? "Connect Wallet to Create" : "Create Market"}
               </Button>
             </Flex>
           </Box>
