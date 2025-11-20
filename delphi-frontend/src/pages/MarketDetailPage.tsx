@@ -1335,7 +1335,7 @@ export function MarketDetailPage() {
                   )}
                   <Box style={{ flex: 1, minWidth: 0 }}>
                     <Heading size="7" mb="2">
-                      Will {marketData.coin} be{" "}
+                      Will {coinData?.name || marketData.coin} be{" "}
                       {getComparatorLabel(marketData.comparator)} $
                       {formatPrice(marketData.price)} on {marketData.date}?
                     </Heading>

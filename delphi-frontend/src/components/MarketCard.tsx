@@ -183,7 +183,7 @@ export function MarketCard({ market }: MarketCardProps) {
                   marginBottom: "12px",
                 }}
               >
-                Will {marketData.coin} be{" "}
+                Will {coinData?.name || marketData.coin} be{" "}
                 {getComparatorLabel(marketData.comparator)} $
                 {formatPrice(marketData.price)} on {marketData.date}?
               </Text>
