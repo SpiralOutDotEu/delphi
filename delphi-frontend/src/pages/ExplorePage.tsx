@@ -49,10 +49,22 @@ export function ExplorePage() {
           currentNetwork,
           delphiPackageId,
         );
-        // Sort by timestamp, newest first
+        // Sort: unresolved first, then resolved. Within each group, sort by timestamp (newest first)
         const sortedMarkets = marketObjects.sort((a, b) => {
-          const timestampA = BigInt(a.asMoveObject.contents.json.timestamp_ms);
-          const timestampB = BigInt(b.asMoveObject.contents.json.timestamp_ms);
+          const marketDataA = a.asMoveObject.contents.json;
+          const marketDataB = b.asMoveObject.contents.json;
+          
+          const isResolvedA = marketDataA.resolved === true || marketDataA.resolved === "true";
+          const isResolvedB = marketDataB.resolved === true || marketDataB.resolved === "true";
+          
+          // First, sort by resolved status (unresolved first)
+          if (isResolvedA !== isResolvedB) {
+            return isResolvedA ? 1 : -1; // unresolved (false) comes before resolved (true)
+          }
+          
+          // If both have the same resolved status, sort by timestamp (newest first)
+          const timestampA = BigInt(marketDataA.timestamp_ms);
+          const timestampB = BigInt(marketDataB.timestamp_ms);
           return timestampB > timestampA ? 1 : timestampB < timestampA ? -1 : 0;
         });
         setMarkets(sortedMarkets);
