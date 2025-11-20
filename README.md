@@ -1,5 +1,7 @@
 # Delphi: Binary Prediction Markets on Sui
 
+🌐 **Live Testnet Application**: [https://delphimarket.wal.app/](https://delphimarket.wal.app/)
+
 Delphi is a decentralized prediction market platform built on the Sui blockchain that enables users to create and trade binary markets on crypto price predictions. The platform combines **Automated Market Making (AMM)** with **Trusted Execution Environment (TEE) oracles** to provide verifiable, trustless market creation and resolution.
 
 ## Overview
@@ -97,12 +99,12 @@ Delphi consists of three main components:
 
 2. [**Sui Smart Contract (Move)**](./move/delphi/sources/delphi.move): Implements the LMSR AMM, manages market lifecycle, verifies enclave signatures, and handles share trading and payouts.
 
-3. [**Frontend (React/TypeScript)**](./delphi-frontend/): Provides a user-friendly interface for creating markets, trading shares, and resolving markets. The frontend is hosted on [Walrus Sites](https://docs.wal.app/walrus-sites/intro.html), which provides several key benefits:
+3. [**Frontend (React/TypeScript)**](./delphi-frontend/): Provides a user-friendly interface for creating markets, trading shares, and resolving markets. **Live at**: [https://delphimarket.wal.app/](https://delphimarket.wal.app/). The frontend is hosted on [Walrus Sites](https://docs.wal.app/walrus-sites/intro.html), which provides several key benefits:
    - **No server management**: Publishing doesn't require managing servers or complex configurations
    - **Ownership & control**: The site is owned by a Sui address and can be updated, exchanged, or shared like any Sui object
    - **Censorship resistance**: Thanks to Walrus's decentralization and high data availability, the site cannot be taken down or wiped
    - **Verifiable & accessible**: Anyone can verify the site contents and access it freely through any Walrus portal
-   - **Human-readable names**: Can leverage SuiNS naming system for memorable domain names
+   - **Human-readable names**: Leverages SuiNS naming system for memorable domain names
 
 > **Development Note**: During the initial development phase, a **pseudo-enclave** API ([`pseudo-enclave-api`](./pseudo-enclave-api/src/server.ts)) and corresponding Move contract ([`pseudo-enclave`](./move/pseudo-enclave/sources/enclave.move)) are used instead of a full AWS Nitro Enclave deployment. This allows for easier testing and development without the additional infrastructure costs and complexity. The pseudo-enclave maintains the same interface and signature verification logic, making it a drop-in replacement for testing purposes.
 
