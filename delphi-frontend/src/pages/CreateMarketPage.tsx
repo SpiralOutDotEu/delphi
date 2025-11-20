@@ -478,6 +478,111 @@ export function CreateMarketPage() {
               </Box>
             </Box>
 
+            <Box
+              mt="6"
+              mb="6"
+              p="4"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 51, 234, 0.08) 100%)",
+                borderRadius: "10px",
+                border: "1px solid rgba(59, 130, 246, 0.2)",
+              }}
+            >
+              <Flex align="start" gap="3">
+                <Box
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "50%",
+                    background:
+                      "linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginTop: "2px",
+                  }}
+                >
+                  <Text
+                    size="2"
+                    style={{
+                      color: "var(--oracle-primary)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    i
+                  </Text>
+                </Box>
+                <Box style={{ flex: 1 }}>
+                  <Text
+                    size="2"
+                    weight="medium"
+                    style={{
+                      color: "var(--oracle-text-primary)",
+                      marginBottom: "6px",
+                      display: "block",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Testing Mode (PoC)
+                  </Text>
+                  <Text
+                    size="2"
+                    style={{
+                      color: "var(--oracle-text-secondary)",
+                      marginBottom: "8px",
+                      display: "block",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    During this PoC period, and for easier testing, the
+                    following relaxed rules apply:
+                  </Text>
+                  <Box asChild>
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: "18px",
+                        color: "var(--oracle-text-secondary)",
+                        lineHeight: 1.6,
+                        fontSize: "13px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <li style={{ marginBottom: "4px" }}>
+                        <Text
+                          size="2"
+                          style={{ color: "var(--oracle-text-secondary)" }}
+                        >
+                          Past dates are allowed for immediate testing
+                        </Text>
+                      </li>
+                      <li>
+                        <Text
+                          size="2"
+                          style={{ color: "var(--oracle-text-secondary)" }}
+                        >
+                          No trading freeze period before resolution
+                        </Text>
+                      </li>
+                    </ul>
+                  </Box>
+                  <Text
+                    size="2"
+                    style={{
+                      color: "var(--oracle-text-secondary)",
+                      opacity: 0.85,
+                      lineHeight: 1.5,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    On mainnet, there will be more strict rules enforced.
+                  </Text>
+                </Box>
+              </Flex>
+            </Box>
+
             <Flex
               gap="4"
               align="center"
