@@ -1,0 +1,7 @@
+{
+  "routes": {
+    "/*": "/index.html"
+  },
+  "site_name": "Delphi Prediction Markets",
+  "object_id": "0xdde6565abc5a3b5dda511215648403afde674375105af5faaeed1e21ab7057f0"
+}
