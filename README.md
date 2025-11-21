@@ -8,7 +8,7 @@ Delphi is a decentralized prediction market platform built on the Sui blockchain
 
 <div align="center">
   <a href="https://youtu.be/e_NOJoVdunI">
-    <img src="https://img.youtube.com/vi/e_NOJoVdunI/maxresdefault.jpg" alt="Delphi Demo Video" width="560" height="315">
+    <img src="./delphi-markets.png" alt="Delphi Demo Video" width="560" height="315">
   </a>
 </div>
 
