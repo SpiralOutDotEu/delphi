@@ -107,8 +107,17 @@ export interface TradeEvent {
 
 export interface TradesResponse {
     data: {
+        serviceConfig?: {
+            maxPageSize: number;
+        };
         events: {
             nodes: TradeEvent[];
+            pageInfo?: {
+                hasNextPage: boolean;
+                hasPreviousPage: boolean;
+                startCursor: string;
+                endCursor: string;
+            };
         };
     };
 }
@@ -328,6 +337,7 @@ export async function getUserPositionsForMarket(
 
 /**
  * Fetch Trade events for a specific market
+ * Uses pagination to fetch all trades, then filters by market ID
  */
 export async function fetchMarketTrades(
     network: string,
@@ -336,63 +346,89 @@ export async function fetchMarketTrades(
 ): Promise<TradeEvent[]> {
     const graphqlUrl = getGraphQLUrl(network);
     const tradeEventType = `${delphiPackageId}::delphi::Trade`;
-
-    const query = `
-    query getMarketTrades {
-      events(
-        last: 50,
-        filter: {
-          type: "${tradeEventType}"
-        }
-      ) {
-        nodes {
-          sender {
-            address
-          }
-          timestamp
-          contents {
-            type {
-              repr
-            }
-            json
-          }
-        }
-      }
-    }
-  `;
+    const allTrades: TradeEvent[] = [];
+    let beforeCursor: string | null = null;
+    let hasMorePages = true;
+    const pageSize = 50;
 
     try {
-        const response = await fetch(graphqlUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ query }),
-        });
+        // Fetch all pages of events
+        while (hasMorePages) {
+            const query = `
+        query getMarketTrades {
+          serviceConfig {
+            maxPageSize(type: "Query", field: "events")
+          }
+          events(
+            last: ${pageSize}${beforeCursor ? `, before: "${beforeCursor}"` : ""}
+            filter: {
+              type: "${tradeEventType}"
+            }
+          ) {
+            nodes {
+              sender {
+                address
+              }
+              timestamp
+              contents {
+                type {
+                  repr
+                }
+                json
+              }
+            }
+            pageInfo {
+              hasNextPage
+              hasPreviousPage
+              startCursor
+              endCursor
+            }
+          }
+        }
+      `;
 
-        if (!response.ok) {
-            throw new Error(`GraphQL request failed: ${response.statusText}`);
+            const response = await fetch(graphqlUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ query }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`GraphQL request failed: ${response.statusText}`);
+            }
+
+            const result: TradesResponse = await response.json();
+
+            if (result.data?.events?.nodes) {
+                allTrades.push(...result.data.events.nodes);
+            }
+
+            // Check if there are more pages to fetch
+            const pageInfo = result.data?.events?.pageInfo;
+            if (pageInfo?.hasPreviousPage && pageInfo.startCursor) {
+                beforeCursor = pageInfo.startCursor;
+                hasMorePages = true;
+            } else {
+                hasMorePages = false;
+            }
         }
 
-        const result: TradesResponse = await response.json();
+        // Filter by market_id and sort by timestamp (oldest first)
+        const filteredTrades = allTrades
+            .filter(
+                (event) =>
+                    event.contents.json.market_id.toLowerCase() ===
+                    marketId.toLowerCase()
+            )
+            .sort(
+                (a, b) =>
+                    new Date(a.timestamp).getTime() -
+                    new Date(b.timestamp).getTime()
+            );
 
-        if (result.data?.events?.nodes) {
-            // Filter by market_id and sort by timestamp (oldest first)
-            const filteredTrades = result.data.events.nodes
-                .filter(
-                    (event) =>
-                        event.contents.json.market_id.toLowerCase() ===
-                        marketId.toLowerCase()
-                )
-                .sort(
-                    (a, b) =>
-                        new Date(a.timestamp).getTime() -
-                        new Date(b.timestamp).getTime()
-                );
-            return filteredTrades;
-        }
-
-        return [];
+        return filteredTrades;
     } catch (error) {
         console.error("Error fetching market trades:", error);
         throw error;
