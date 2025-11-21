@@ -1,8 +1,16 @@
 # Delphi: Binary Prediction Markets on Sui
 
+Delphi is a decentralized prediction market platform built on the Sui blockchain that enables users to create and trade binary markets on crypto price predictions. The platform combines **Automated Market Making (AMM)** with **Trusted Execution Environment (TEE) oracles** to provide verifiable, trustless market creation and resolution.
+
 🌐 **Live Testnet Application**: [https://delphimarket.wal.app/](https://delphimarket.wal.app/)
 
-Delphi is a decentralized prediction market platform built on the Sui blockchain that enables users to create and trade binary markets on crypto price predictions. The platform combines **Automated Market Making (AMM)** with **Trusted Execution Environment (TEE) oracles** to provide verifiable, trustless market creation and resolution.
+📹 **Demo Video**: [Watch on YouTube](https://youtu.be/e_NOJoVdunI)
+
+<div align="center">
+  <a href="https://youtu.be/e_NOJoVdunI">
+    <img src="https://img.youtube.com/vi/e_NOJoVdunI/maxresdefault.jpg" alt="Delphi Demo Video" width="560" height="315">
+  </a>
+</div>
 
 ## Overview
 
